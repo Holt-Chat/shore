@@ -111,6 +111,7 @@ function mdRefresh() {
   let text = messageInput.textContent;
   if (max&&text.length>max) text = text.slice(0, max);
   let caret = mdGetCaret();
+  mdPushHistory();
   messageInput.innerHTML = mdHighlight(text);
   if (caret) mdSetCaret(Math.min(caret[0], text.length), Math.min(caret[1], text.length));
 }
@@ -121,6 +122,36 @@ messageInput.setSelectionRange = function(s, e) { this.focus(); mdSetCaret(s, e?
 messageInput.oninput = messageInput.onchange = mdRefresh;
 messageInput.addEventListener('compositionstart', ()=>{ mdComposing = true; });
 messageInput.addEventListener('compositionend', ()=>{ mdComposing = false; mdRefresh(); });
+// Rewriting innerHTML on every keystroke (for markdown highlighting) wipes the browser's native
+// contenteditable undo stack, so Ctrl+Z is handled with our own history instead of relying on it.
+let mdHistory = [{text: '', caret: 0}];
+let mdHistoryIndex = 0;
+let mdHistoryRestoring = false;
+let mdLastPushAt = 0;
+function mdPushHistory() {
+  if (mdHistoryRestoring||mdComposing) return;
+  let text = messageInput.textContent;
+  let top = mdHistory[mdHistoryIndex];
+  if (top.text===text) return;
+  let caret = mdGetCaret()?.[1]??text.length;
+  let now = Date.now();
+  let boundary = now-mdLastPushAt>500||Math.abs(text.length-top.text.length)>1||/\s/.test(text.slice(-1));
+  if (mdHistoryIndex<mdHistory.length-1) mdHistory = mdHistory.slice(0, mdHistoryIndex+1);
+  if (boundary||mdHistoryIndex===0) { mdHistory.push({text, caret}); mdHistoryIndex++; }
+  else mdHistory[mdHistoryIndex] = {text, caret};
+  if (mdHistory.length>200) { mdHistory.shift(); mdHistoryIndex--; }
+  mdLastPushAt = now;
+}
+function mdRestoreHistory() {
+  mdHistoryRestoring = true;
+  let entry = mdHistory[mdHistoryIndex];
+  messageInput.textContent = entry.text;
+  messageInput.innerHTML = mdHighlight(entry.text);
+  mdSetCaret(Math.min(entry.caret, entry.text.length));
+  mdHistoryRestoring = false;
+}
+function mdUndo() { if (mdHistoryIndex>0) { mdHistoryIndex--; mdRestoreHistory(); } }
+function mdRedo() { if (mdHistoryIndex<mdHistory.length-1) { mdHistoryIndex++; mdRestoreHistory(); } }
 // Presence + typing
 window.presence = window.presence??{};
 window.lastSeen = window.lastSeen??{};
@@ -661,6 +692,8 @@ window.submitSlash = async function() {
   if (errEl) errEl.textContent = res?.error||await getTranslation('slash.invalid')||'Error';
 };
 messageInput.onkeydown = (evt)=>{
+  if ((evt.ctrlKey||evt.metaKey)&&!evt.shiftKey&&evt.key.toLowerCase()==='z') { evt.preventDefault(); mdUndo(); return; }
+  if ((evt.ctrlKey||evt.metaKey)&&(evt.key.toLowerCase()==='y'||(evt.shiftKey&&evt.key.toLowerCase()==='z'))) { evt.preventDefault(); mdRedo(); return; }
   if (mentionMenu.style.display!=='none') {
     if (evt.key==='ArrowDown') { evt.preventDefault(); _mentionNav(1); return; }
     if (evt.key==='ArrowUp') { evt.preventDefault(); _mentionNav(-1); return; }
