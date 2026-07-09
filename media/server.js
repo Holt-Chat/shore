@@ -88,6 +88,7 @@ document.getElementById('server-add').onclick = function(){
   localStorage.setItem('servers', JSON.stringify(window.servers));
   showServerList();
 };
+document.getElementById('sm-remember').checked = localStorage.getItem('prs')==='true';
 let checkOnlineInter;
 document.getElementById('server-select').onclick = function(){
   if (typeof document.getElementById('server-select').getAttribute('disabled')==='string') return;
@@ -95,6 +96,7 @@ document.getElementById('server-select').onclick = function(){
   document.getElementById('server-modal').close();
   clearInterval(checkOnlineInter);
   localStorage.setItem('pls', window.currentServer);
+  localStorage.setItem('prs', document.getElementById('sm-remember').checked);
   window.postServerSelect();
 };
 

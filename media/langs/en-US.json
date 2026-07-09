@@ -6,6 +6,7 @@
 	"servers.newurl": "URL for new server",
 	"servers.newbutton": "Add server",
 	"servers.select": "Select",
+	"servers.remember": "Remember on this machine",
 	"login.title": "Log in",
 	"login.username": "Username:",
 	"login.passkey": "Passkey:",

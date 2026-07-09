@@ -676,6 +676,15 @@ dialog[open]::backdrop {
   flex-shrink: 0;
   accent-color: var(--accent);
 }
+#server-modal .combinedopt {
+  margin: 16px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+#server-modal .combinedopt input {
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
 #s-done, #br-done {
   padding: 11px;
   font-size: 0.95rem;

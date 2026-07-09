@@ -6,6 +6,7 @@
 	"servers.newurl": "URL para nuevo servidor",
 	"servers.newbutton": "Añadir servidor",
 	"servers.select": "Seleccionar",
+	"servers.remember": "Recordar en este dispositivo",
 	"login.title": "Iniciar sesión",
 	"login.username": "Nombre:",
 	"login.passkey": "Llave:",

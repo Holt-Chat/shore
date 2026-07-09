@@ -76,6 +76,7 @@
         <button id="server-add" tlang="servers.newbutton" aria-label="Add server"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 256 256"><rect x="103" width="50" height="256" rx="25"/><rect y="103" width="256" height="50" rx="25"/></svg></button>
       </form>
       <div id="server-list"></div>
+      <label class="combinedopt" id="sm-remember-row"><input type="checkbox" id="sm-remember"><span tlang="servers.remember">Remember on this machine</span></label>
       <div class="sm-actions">
         <button id="srv-btn-theme" aria-label="Theme color" tlang="settings.themecolor" onclick="document.getElementById('srv-theme').click()"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"><path d="M128 26C128 26 56 104 56 156a72 72 0 0 0 144 0C200 104 128 26 128 26Z"/></svg></button>
         <input type="color" id="srv-theme" class="srv-theme-input" oninput="window.applyAccent(this.value);localStorage.setItem('ptheme',this.value)" value="#9d7bff">

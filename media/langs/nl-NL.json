@@ -6,6 +6,7 @@
 	"servers.newurl": "URL voor nieuwe server",
 	"servers.newbutton": "Server toevoegen",
 	"servers.select": "Selecteren",
+	"servers.remember": "Dit apparaat herinneren",
 	"login.title": "Inloggen",
 	"login.username": "Gebruikersnaam:",
 	"login.passkey": "Toegangscode:",
