@@ -1,0 +1,2562 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Holt Bot API",
+    "version": "1.0.0",
+    "summary": "Build bots that participate in Holt channels.",
+    "description": "A Holt bot is a user-like identity owned by a human account. It has its own username, display name, profile picture, and RSA keypair, so it is a full end-to-end channel member rather than a side channel into the server. A human owns one or more bots and manages them with their normal logged-in session. Each bot authenticates with its own long-lived bot token (a 30-character nanoid) instead of the passkey challenge flow that humans use.\n\nThe keypair is generated client-side when you create the bot. You send the public key (392-character base64 DER) at creation and keep the private key yourself; the server never sees it. The bot uses that private key to sign messages and to unwrap the per-channel symmetric keys, exactly like a human member. A bot joins channels the same way a person does: by accepting an invite, or by being added to a channel by username through the normal member flow. The server has no plaintext access to message content in encrypted channels.\n\nTwo token types appear in this API. The owner's session token authorizes the bot management endpoints under `/bots` and `/bot/{bot_id}`. The bot's own token authorizes the chat endpoints the bot calls at runtime (listing channels, reading and sending messages, joining invites, and the event stream).",
+    "contact": {
+      "name": "Holt"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Holt API base. All paths below are relative to this prefix."
+    }
+  ],
+  "tags": [
+    {
+      "name": "Bot management",
+      "description": "Endpoints the human owner calls with their session token to create and manage bots."
+    },
+    {
+      "name": "Bot actions",
+      "description": "Endpoints the bot calls with its own token to read and send messages and receive events."
+    },
+    {
+      "name": "Slash commands",
+      "description": "Register slash commands that channel members can invoke. Bots receive interactions via the SSE stream as `interaction_create` events."
+    }
+  ],
+  "security": [],
+  "paths": {
+    "/bots": {
+      "get": {
+        "tags": [
+          "Bot management"
+        ],
+        "summary": "List your bots",
+        "description": "Returns every bot owned by the authenticated account, newest first.",
+        "operationId": "listBots",
+        "security": [
+          {
+            "ownerSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of bots you own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Bot"
+                  }
+                },
+                "example": [
+                  {
+                    "id": "kXq8r2mZ7tLpV3nB1aWc",
+                    "username": "deploy_bot",
+                    "display": "Deploy Bot",
+                    "pfp": "f0Ad7Kp2Lm9Qrs1Tuv3",
+                    "public": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
+                    "created_at": 1718900000
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Bot management"
+        ],
+        "summary": "Create a bot",
+        "description": "Creates a bot owned by the authenticated account. Generate an RSA keypair client-side first and send the public key as `public` (392-character base64 DER). The response includes the bot token exactly once. Store it now; it is never returned again and can only be replaced by rotating it.",
+        "operationId": "createBot",
+        "security": [
+          {
+            "ownerSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "public"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 20,
+                    "pattern": "^[a-z0-9_\\-]+$",
+                    "description": "Unique handle for the bot. Lowercase letters, digits, underscore, and hyphen only."
+                  },
+                  "public": {
+                    "type": "string",
+                    "minLength": 392,
+                    "maxLength": 392,
+                    "description": "The bot's RSA public key as base64-encoded DER, exactly 392 characters. Generated client-side; the matching private key never leaves your control."
+                  },
+                  "display": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 24,
+                    "description": "Optional display name shown in channels. Omit or send empty to use the username."
+                  },
+                  "pfp": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Optional profile picture. WebP only, at most 256x256."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Bot created. `token` is shown here once and never again.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotCreateResponse"
+                },
+                "example": {
+                  "bot": {
+                    "id": "kXq8r2mZ7tLpV3nB1aWc",
+                    "username": "deploy_bot",
+                    "display": "Deploy Bot",
+                    "pfp": null,
+                    "public": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
+                    "created_at": 1718900000
+                  },
+                  "token": "V1StGXR8Z5jdHi6BM1aT7qP3",
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed: username taken, bad length or characters, invalid public key, or invalid pfp.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Username is in use",
+                  "success": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Bot limit reached: you already own the maximum number of bots allowed per owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "You have reached the maximum number of bots",
+                  "success": false
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/bots/me": {
+      "get": {
+        "tags": [
+          "Bot actions"
+        ],
+        "summary": "Get the current bot",
+        "description": "Returns the identity of the bot whose token is presented. Only callable with a bot token; a human session gets 403.",
+        "operationId": "getCurrentBot",
+        "security": [
+          {
+            "botToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The authenticated bot.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Bot"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "owner_id": {
+                          "type": "string",
+                          "description": "ID of the human account that owns this bot."
+                        },
+                        "is_bot": {
+                          "type": "integer",
+                          "enum": [
+                            1
+                          ]
+                        },
+                        "success": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "id": "kXq8r2mZ7tLpV3nB1aWc",
+                  "username": "deploy_bot",
+                  "display": "Deploy Bot",
+                  "pfp": null,
+                  "public": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
+                  "owner_id": "9bZ2pQ7rLm4Xt1Vn3KdC",
+                  "is_bot": 1,
+                  "created_at": 1718900000,
+                  "success": true
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "The token is not a bot token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "This endpoint is only available to bots",
+                  "success": false
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/bot/{bot_id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/BotId"
+        }
+      ],
+      "patch": {
+        "tags": [
+          "Bot management"
+        ],
+        "summary": "Edit a bot",
+        "description": "Updates a bot you own. Send the fields you want to change. To change the display name send `display` (empty string clears it). To change the picture send a new `pfp`. At least one valid change is required.",
+        "operationId": "editBot",
+        "security": [
+          {
+            "ownerSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "display": {
+                    "type": "string",
+                    "maxLength": 24,
+                    "description": "New display name (2 to 24 chars), or empty string to clear it."
+                  },
+                  "pfp": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "New profile picture. WebP only, at most 256x256."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bot updated. `errors` lists any fields that were rejected while others succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bot": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "display": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pfp": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "example": {
+                  "bot": {
+                    "id": "kXq8r2mZ7tLpV3nB1aWc",
+                    "username": "deploy_bot",
+                    "display": "Release Bot",
+                    "pfp": null
+                  },
+                  "errors": [],
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No valid parameters to update. `errors` explains why.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "No valid parameters to update",
+                  "errors": [
+                    "Invalid display parameter, error: length"
+                  ],
+                  "success": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/BotNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Bot management"
+        ],
+        "summary": "Delete a bot",
+        "description": "Permanently deletes a bot you own, along with its token and channel memberships.",
+        "operationId": "deleteBot",
+        "security": [
+          {
+            "ownerSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bot deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                },
+                "example": {
+                  "success": true
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/BotNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/bot/{bot_id}/token": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/BotId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Bot management"
+        ],
+        "summary": "Rotate a bot token",
+        "description": "Generates a fresh token for a bot you own and invalidates the old one. The new token is returned exactly once. Any process using the previous token must be updated.",
+        "operationId": "rotateBotToken",
+        "security": [
+          {
+            "ownerSession": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "New token issued. Shown once.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string",
+                      "description": "The new bot token. Store it now."
+                    },
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "example": {
+                  "token": "9Lp2VmZ7tKxR3nB1aWcQs0d",
+                  "success": true
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/BotNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/channels": {
+      "get": {
+        "tags": [
+          "Bot actions"
+        ],
+        "summary": "List the bot's channels",
+        "description": "Returns the channels the bot is a member of, with each channel's last message and the bot's effective permissions. Use this to discover channel IDs to read from and write to.",
+        "operationId": "listChannels",
+        "security": [
+          {
+            "botToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Channels the bot belongs to.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Channel"
+                  }
+                },
+                "example": [
+                  {
+                    "id": "aT4cR9mZ7tLpV3nB1xWd",
+                    "type": 2,
+                    "name": "ops",
+                    "pfp": null,
+                    "permissions": 4,
+                    "unread_count": 3,
+                    "member_count": 5,
+                    "last_message": null
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/channel/{channel_id}/messages": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ChannelId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Bot actions"
+        ],
+        "summary": "Read messages",
+        "description": "Returns messages from a channel the bot belongs to, newest first. Content is returned exactly as stored. In encrypted channels (type 1 and 2) `content` is base64 ciphertext that the bot decrypts locally with the channel key referenced by `key`. Use the cursor params to page or to fetch only new messages.",
+        "operationId": "listMessages",
+        "security": [
+          {
+            "botToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "description": "Number of messages to return (max 100)."
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "Number of messages to skip from the newest."
+          },
+          {
+            "name": "before_messages",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "default": 0
+            },
+            "description": "Extra older messages to include beyond `limit`, for context around a page."
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Only messages from this user (20-char user ID, or '0' for webhook/system)."
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Only messages with timestamp (ms) before this value."
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Only messages with timestamp (ms) after this value."
+          },
+          {
+            "name": "before_message_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Only messages before this message ID."
+          },
+          {
+            "name": "after_message_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Only messages after this message ID. Useful for polling new messages."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages, newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Message"
+                  }
+                },
+                "example": [
+                  {
+                    "id": "mZ7tLpV3nB1aWcQs0dRf",
+                    "content": "U2FsdGVkX1+ab3...",
+                    "key": "k3yId9Qr2Lm4Xt1Vn3Kd",
+                    "iv": "9f8b1c2d3e4a5b6c",
+                    "timestamp": 1718900123456,
+                    "edited_at": null,
+                    "replied_to": null,
+                    "nonce": "0a1b2c3d",
+                    "user": {
+                      "username": "alice",
+                      "display": "Alice",
+                      "pfp": null
+                    },
+                    "signature": "Rk5...",
+                    "signed_timestamp": 1718900123,
+                    "attachments": []
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/ChannelNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Bot actions"
+        ],
+        "summary": "Send a message",
+        "description": "Sends a message to a channel the bot belongs to. The bot needs the send-messages permission. Every message is signed: sign the current epoch-seconds timestamp with the bot's private key (RSA-PSS, SHA-256) and send the base64 signature in `signature` with the same value in `timestamp`. The server checks the timestamp against its signature window.\n\nIn encrypted channels (type 1 DM and type 2 group), `content` is base64 ciphertext encrypted with the current channel key, and you must also send `key` (the current channel key ID) and `iv` (16-char hex). In broadcast channels (type 3), content is plaintext and `key`/`iv` are omitted. `nonce` is an optional client-side dedup token echoed back on the stream event.\n\n`embed_asset_ids` is a JSON array of file ids returned by POST /channel/{channel_id}/embed-asset, confirming ownership of any embed image/thumbnail/icon_url references used in this message's content.",
+        "operationId": "sendMessage",
+        "security": [
+          {
+            "botToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "content",
+                  "timestamp",
+                  "signature"
+                ],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "description": "Message body. Base64 ciphertext in encrypted channels, plaintext in broadcast channels. Required unless files are attached. May contain `! embed: {json}`, `! diagram: {json}` (Mermaid syntax, key `code`), and `! interactive: {json}` (sandboxed HTML/CSS/JS, keys `html`/`css`/`js`) blocks, each on their own line, encrypted along with the rest of the content \u2014 see the Embeds, Diagrams, and Interactive content sections of this guide."
+                  },
+                  "timestamp": {
+                    "type": "integer",
+                    "description": "Epoch seconds you signed. Must be within the server's signature window of now."
+                  },
+                  "signature": {
+                    "type": "string",
+                    "description": "Base64 RSA-PSS (SHA-256) signature of the timestamp string, made with the bot's private key."
+                  },
+                  "key": {
+                    "type": "string",
+                    "description": "Current channel key ID. Required in encrypted channels, omit in broadcast channels."
+                  },
+                  "iv": {
+                    "type": "string",
+                    "minLength": 16,
+                    "maxLength": 16,
+                    "description": "16-character hex IV used to encrypt `content`. Required in encrypted channels."
+                  },
+                  "nonce": {
+                    "type": "string",
+                    "description": "Optional client dedup token, echoed back on the message stream event."
+                  },
+                  "replied_to": {
+                    "type": "string",
+                    "description": "Optional ID of a message in this channel to reply to."
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    },
+                    "description": "Optional file attachments."
+                  },
+                  "attachments_meta": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Optional per-file JSON metadata, e.g. {\"encrypted\": true, \"iv\": \"...\"}, aligned by index with `files`."
+                  },
+                  "components": {
+                    "type": "string",
+                    "description": "Bots only. JSON-encoded array of up to 5 action rows containing buttons. Each row: {\"type\":1,\"components\":[...]}. Each button: {\"type\":2,\"style\":1-5,\"label\":\"...\",\"custom_id\":\"...\"} (style 5 uses `url` instead of `custom_id`). Pass `disabled:true` to grey out a button."
+                  },
+                  "embed_asset_ids": {
+                    "type": "string",
+                    "description": "JSON-encoded array of up to 40 file ids previously returned by POST /channel/{channel_id}/embed-asset, referenced by any embed image/thumbnail/icon_url in this message's content."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Message stored and broadcast.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message_id": {
+                      "type": "string"
+                    },
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Attachment"
+                      }
+                    },
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "example": {
+                  "message_id": "mZ7tLpV3nB1aWcQs0dRf",
+                  "attachments": [],
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid field: content/files empty, bad timestamp, bad iv, missing key in an encrypted channel, message too long, or replied_to not in this channel.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "key and iv is required in non-broadcast channels",
+                  "success": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "No permission to send, or blocked in a DM.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "No permission to send messages",
+                  "success": false
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ChannelNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/channel/{channel_id}/message/{message_id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ChannelId"
+        },
+        {
+          "name": "message_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "patch": {
+        "tags": [
+          "Bot actions"
+        ],
+        "summary": "Edit a message",
+        "description": "Edits a message the bot authored. Same multipart/form-data format as sending: provide `content` (re-encrypted if needed), `timestamp`, and `signature`. Bots may also include `components` (JSON-encoded) to replace interactive buttons, or pass `\"[]\"` to clear them. `content` is optional when `components` is the only change \u2014 but `timestamp` and `signature` are always required.",
+        "operationId": "editMessage",
+        "security": [
+          {
+            "botToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "timestamp",
+                  "signature"
+                ],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "description": "New message body. Omit to leave unchanged. Base64 ciphertext in encrypted channels."
+                  },
+                  "timestamp": {
+                    "type": "integer",
+                    "description": "Epoch seconds you signed."
+                  },
+                  "signature": {
+                    "type": "string",
+                    "description": "Base64 RSA-PSS (SHA-256) signature of the timestamp, made with the bot's private key."
+                  },
+                  "key": {
+                    "type": "string",
+                    "description": "Current channel key ID. Required in encrypted channels when `content` is provided."
+                  },
+                  "iv": {
+                    "type": "string",
+                    "minLength": 16,
+                    "maxLength": 16,
+                    "description": "16-char IV for the new ciphertext. Required in encrypted channels when `content` is provided."
+                  },
+                  "components": {
+                    "type": "string",
+                    "description": "JSON-encoded action row array. Pass `\"[]\"` to clear all buttons. Omit to leave unchanged."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                },
+                "example": {
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid field, bad timestamp, or bad components.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Not the message author, or components used by non-bot.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ChannelNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/channel/{channel_id}/messages/{message_id}/component": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ChannelId"
+        },
+        {
+          "name": "message_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Bot actions"
+        ],
+        "summary": "Handle a button click (user-side)",
+        "description": "Called by the client when a user clicks a button on a bot message. The bot receives a `component_interaction` SSE event with the resulting `interaction_id`. Documented here for completeness \u2014 bots do not call this endpoint themselves.",
+        "operationId": "clickComponent",
+        "security": [
+          {
+            "botToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "custom_id"
+                ],
+                "properties": {
+                  "custom_id": {
+                    "type": "string",
+                    "description": "The `custom_id` of the button that was clicked."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Interaction created; bot will receive SSE event.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "interaction_id": {
+                      "type": "string"
+                    },
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Button not found or disabled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/ChannelNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/interactions/{interaction_id}/respond": {
+      "parameters": [
+        {
+          "name": "interaction_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Bot actions"
+        ],
+        "summary": "Respond to a component interaction",
+        "description": "Bot-only. Called after receiving a `component_interaction` SSE event. An interaction can only be responded to once. Type `\"ack\"` silently acknowledges. Type `\"modal\"` opens a form dialog on the clicking user's screen; the bot then receives a `modal_submit` event when the user submits.",
+        "operationId": "respondToInteraction",
+        "security": [
+          {
+            "botToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "ack",
+                      "modal"
+                    ],
+                    "description": "`ack` to silently consume the interaction; `modal` to show a form to the user."
+                  },
+                  "title": {
+                    "type": "string",
+                    "maxLength": 45,
+                    "description": "Modal title. Required when type is `modal`."
+                  },
+                  "custom_id": {
+                    "type": "string",
+                    "description": "Modal identifier echoed in the `modal_submit` event."
+                  },
+                  "components": {
+                    "type": "array",
+                    "description": "Action rows of Text Input fields (type 4). Required when type is `modal`.",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                }
+              },
+              "examples": {
+                "ack": {
+                  "value": {
+                    "type": "ack"
+                  }
+                },
+                "modal": {
+                  "value": {
+                    "type": "modal",
+                    "title": "Denial reason",
+                    "custom_id": "deny_modal",
+                    "components": [
+                      {
+                        "type": 1,
+                        "components": [
+                          {
+                            "type": 4,
+                            "custom_id": "reason",
+                            "label": "Why are you denying this?",
+                            "style": 2,
+                            "required": true,
+                            "max_length": 500
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Already responded, or invalid modal structure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Not a bot, or not your interaction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Interaction not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/interactions/{interaction_id}/modal-submit": {
+      "parameters": [
+        {
+          "name": "interaction_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Bot actions"
+        ],
+        "summary": "Submit a modal (user-side)",
+        "description": "Called by the client when a user submits a modal form. The bot receives a `modal_submit` SSE event. Documented here for completeness \u2014 bots do not call this endpoint themselves.",
+        "operationId": "submitModal",
+        "security": [
+          {
+            "botToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "components"
+                ],
+                "properties": {
+                  "components": {
+                    "type": "object",
+                    "description": "Map of custom_id \u2192 submitted value for each field in the modal."
+                  }
+                }
+              },
+              "example": {
+                "components": {
+                  "reason": "Does not meet policy."
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Submission forwarded to bot.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Not your interaction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Interaction not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/channels/invite/{invite_code}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/InviteCode"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Bot actions"
+        ],
+        "summary": "Look up an invite",
+        "description": "Resolves an invite code to its channel so the bot can decide whether to join. Does not join.",
+        "operationId": "getInvite",
+        "security": [
+          {
+            "botToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invite details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "channel_id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "pfp": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "type": {
+                      "type": "integer"
+                    },
+                    "member_count": {
+                      "type": "integer"
+                    },
+                    "is_member": {
+                      "type": "boolean"
+                    },
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "example": {
+                  "channel_id": "aT4cR9mZ7tLpV3nB1xWd",
+                  "name": "ops",
+                  "pfp": null,
+                  "type": 2,
+                  "member_count": 5,
+                  "is_member": false,
+                  "success": true
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Invite not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Invite not found",
+                  "success": false
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Bot actions"
+        ],
+        "summary": "Join via invite",
+        "description": "Adds the bot to the channel behind the invite code. After joining, the bot is a full member and can read and send messages subject to channel permissions.",
+        "operationId": "joinInvite",
+        "security": [
+          {
+            "botToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Joined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "channel_id": {
+                      "type": "string"
+                    },
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "example": {
+                  "channel_id": "aT4cR9mZ7tLpV3nB1xWd",
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Already a member, or the channel is full.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "You are already a member of this channel",
+                  "success": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "The bot is banned from the channel.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "You are banned from this channel",
+                  "success": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Invite not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Invite not found",
+                  "success": false
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/bots/me/commands": {
+      "get": {
+        "tags": [
+          "Slash commands"
+        ],
+        "summary": "List registered commands",
+        "description": "Returns all slash commands the bot has registered, with full option schemas.",
+        "operationId": "listMyCommands",
+        "security": [
+          {
+            "botToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of commands.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BotCommand"
+                  }
+                },
+                "example": [
+                  {
+                    "id": "aT4cR9mZ7tLpV3nB1xWd",
+                    "name": "ping",
+                    "description": "Check latency",
+                    "options": []
+                  }
+                ]
+              }
+            }
+          },
+          "403": {
+            "description": "Token is not a bot token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Bot only",
+                  "success": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Slash commands"
+        ],
+        "summary": "Replace all commands",
+        "description": "Atomically replaces the bot's entire command set. Send the full desired list. All existing commands are deleted and the new list is inserted. Useful for keeping commands in sync with a config file. Max 100 commands. All commands are validated before any are saved; a single validation error aborts the whole operation.",
+        "operationId": "replaceAllCommands",
+        "security": [
+          {
+            "botToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/BotCommand"
+                },
+                "maxItems": 100
+              },
+              "example": [
+                {
+                  "name": "ping",
+                  "description": "Check bot latency",
+                  "options": []
+                },
+                {
+                  "name": "announce",
+                  "description": "Post a channel announcement",
+                  "options": [
+                    {
+                      "name": "message",
+                      "description": "Text to announce",
+                      "type": "string",
+                      "required": true,
+                      "max_length": 500
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Full new command list after replacement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BotCommand"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error in one or more commands.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Invalid command name: 'My Command'",
+                  "success": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Token is not a bot token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Bot only",
+                  "success": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Slash commands"
+        ],
+        "summary": "Upsert a command",
+        "description": "Creates or updates a single command by name. If a command with the same name already exists it is replaced (options included). Fails if the bot already has 100 commands and the name is new.",
+        "operationId": "upsertCommand",
+        "security": [
+          {
+            "botToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BotCommand"
+              },
+              "example": {
+                "name": "ping",
+                "description": "Check bot latency",
+                "options": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The upserted command with its assigned ID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotCommand"
+                },
+                "example": {
+                  "id": "aT4cR9mZ7tLpV3nB1xWd",
+                  "name": "ping",
+                  "description": "Check bot latency",
+                  "options": []
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or command limit reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Maximum 100 commands",
+                  "success": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Token is not a bot token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Bot only",
+                  "success": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/bots/me/commands/{name}": {
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "The command name to delete."
+        }
+      ],
+      "delete": {
+        "tags": [
+          "Slash commands"
+        ],
+        "summary": "Delete a command",
+        "description": "Removes one command by name. All its options are deleted in cascade.",
+        "operationId": "deleteCommand",
+        "security": [
+          {
+            "botToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Command deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                },
+                "example": {
+                  "success": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Token is not a bot token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Bot only",
+                  "success": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Command not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Command not found",
+                  "success": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/stream": {
+      "get": {
+        "tags": [
+          "Bot actions"
+        ],
+        "summary": "Event stream (SSE)",
+        "description": "Server-sent events for the bot: new messages, edits, deletes, member changes, and more. This is the real-time alternative to polling `GET /channel/{id}/messages`.\n\nBecause EventSource cannot set headers, this endpoint takes auth as the `authorization` query argument instead of a header, with the same `Bearer <token>` value. Pass the bot token there. The stream emits a heartbeat comment roughly every 10 seconds; each real event is an SSE frame with an `event:` name and a JSON `data:` payload.\n\nBots also receive `interaction_create` events here when a channel member fires one of the bot's slash commands. The payload includes the interaction ID, channel, the user who triggered it, the command name, and the fully-validated options map.",
+        "operationId": "eventStream",
+        "security": [],
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The string 'Bearer <bot_token>'. Used here as a query arg because EventSource cannot send headers."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "An open text/event-stream. Frames look like `event: message_sent\\ndata: {...}\\n\\n`.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "event: message_sent\ndata: {\"channel_id\": \"aT4cR9mZ7tLpV3nB1xWd\", \"message\": {\"id\": \"mZ7tLpV3nB1aWcQs0dRf\", \"content\": \"...\"}}\n\n"
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or bad authorization request argument.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Authorization request argument missing",
+                  "success": false
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/attachment/{file_id}": {
+      "servers": [
+        {
+          "url": "/",
+          "description": "Not under /api/v1 \u2014 served from the instance root."
+        }
+      ],
+      "get": {
+        "tags": [
+          "Bot actions"
+        ],
+        "summary": "Download a message attachment",
+        "description": "Streams the raw attachment bytes with `Content-Disposition: attachment`. No Authorization is required or checked \u2014 access relies on `file_id` being unguessable, not on channel membership. If `encrypted` was true on the Attachment object, the bytes are AES-GCM ciphertext requiring the channel's AES key and the attachment's own `iv` to decrypt. `filename`/`mimetype` are always served in the clear.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attachment bytes",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Attachment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/channel/{channel_id}/embed-asset": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Upload an embed image",
+        "description": "Uploads a single image to be referenced from an embed's `image`, `thumbnail`, `author.icon_url`, or `footer.icon_url` field, instead of an arbitrary http(s) URL. Clients refuse to render http(s) embed images for privacy (fetching one would leak the viewer's IP to whoever controls that URL) \u2014 embed images must be uploaded through this endpoint and referenced by the returned `{id, encrypted, iv}` object, e.g. `\"image\": {\"id\": \"...\", \"encrypted\": true, \"iv\": \"...\"}`. In encrypted channels, encrypt the image client-side with the channel's current AES key before uploading (`encrypted=1`, `key`=key id, `iv`=IV), the same way message attachments are encrypted. The upload is held standalone until a message is sent referencing its id via `embed_asset_ids` on POST /channel/{channel_id}/messages; unreferenced uploads are cleaned up automatically after about an hour.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "channel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "image"
+                ],
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The image file. Must be an image/* mimetype."
+                  },
+                  "encrypted": {
+                    "type": "string",
+                    "description": "Pass \"1\" to mark the upload as client-side encrypted (non-broadcast channels only)."
+                  },
+                  "key": {
+                    "type": "string",
+                    "description": "Current channel AES key id, required when encrypted=1."
+                  },
+                  "iv": {
+                    "type": "string",
+                    "description": "16-char AES IV, required when encrypted=1."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Image uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbedAsset"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No permission / no encryption key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Channel not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Image exceeds file size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimited"
+                }
+              }
+            }
+          }
+        },
+        "x-ratelimit": {
+          "ip": 100,
+          "user": 50,
+          "window": 60
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ownerSession": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "The human owner's session token, sent as `Authorization: Bearer <session_token>`. Authorizes the bot management endpoints."
+      },
+      "botToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "The bot's own token (a 30-character nanoid), sent as `Authorization: Bearer <bot_token>`. Authorizes the chat endpoints the bot calls. For `/stream`, pass the same `Bearer <bot_token>` value in the `authorization` query argument instead."
+      }
+    },
+    "parameters": {
+      "BotId": {
+        "name": "bot_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "ID of a bot you own."
+      },
+      "ChannelId": {
+        "name": "channel_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "ID of a channel the bot belongs to."
+      },
+      "InviteCode": {
+        "name": "invite_code",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "An invite code."
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Missing or invalid token.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": "Unauthorized",
+              "success": false
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "Rate limit hit. Limits are per IP and per identity. See the X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset response headers.",
+        "headers": {
+          "X-RateLimit-Limit": {
+            "schema": {
+              "type": "string"
+            },
+            "description": "Request limit for the window."
+          },
+          "X-RateLimit-Remaining": {
+            "schema": {
+              "type": "string"
+            },
+            "description": "Requests left in the window."
+          },
+          "X-RateLimit-Reset": {
+            "schema": {
+              "type": "string"
+            },
+            "description": "Epoch seconds when the limit resets."
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/RateLimitError"
+            },
+            "example": {
+              "success": false,
+              "ratelimit": true,
+              "type": "user"
+            }
+          }
+        }
+      },
+      "PayloadTooLarge": {
+        "description": "Uploaded file exceeds the size limit.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": "Profile picture exceed file size limit",
+              "success": false
+            }
+          }
+        }
+      },
+      "BotNotFound": {
+        "description": "No bot with that ID is owned by you.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": "Bot not found",
+              "success": false
+            }
+          }
+        }
+      },
+      "ChannelNotFound": {
+        "description": "The bot is not a member of that channel, or it does not exist.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": "Channel not found",
+              "success": false
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Bot": {
+        "type": "object",
+        "description": "A bot identity owned by a human account.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable bot ID (20-char nanoid)."
+          },
+          "username": {
+            "type": "string",
+            "description": "Unique handle."
+          },
+          "display": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Display name, or null."
+          },
+          "pfp": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Profile picture file ID, or null. Fetch the image at /pfp/{pfp}."
+          },
+          "public": {
+            "type": "string",
+            "description": "The bot's RSA public key (base64 DER)."
+          },
+          "created_at": {
+            "type": "integer",
+            "description": "Creation time in epoch seconds."
+          }
+        }
+      },
+      "BotCreateResponse": {
+        "type": "object",
+        "description": "Returned once when a bot is created. Contains the token, which is never shown again.",
+        "properties": {
+          "bot": {
+            "$ref": "#/components/schemas/Bot"
+          },
+          "token": {
+            "type": "string",
+            "description": "The bot token (30-char nanoid). Store it now; it cannot be retrieved later, only rotated."
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Channel": {
+        "type": "object",
+        "description": "A channel the bot belongs to. `type` is 1 for DM, 2 for encrypted group, 3 for broadcast.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3
+            ],
+            "description": "1 = DM, 2 = encrypted group, 3 = broadcast."
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "username": {
+            "type": "string",
+            "description": "For DM channels, the other user's username (present only when they have a display name)."
+          },
+          "pfp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "permissions": {
+            "type": "integer",
+            "description": "The bot's effective permission bitfield in this channel."
+          },
+          "unread_count": {
+            "type": "integer"
+          },
+          "member_count": {
+            "type": "integer"
+          },
+          "last_message": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Message"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The most recent message, or null."
+          }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "description": "A channel message. In encrypted channels `content` is base64 ciphertext and is decrypted client-side.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Message ID."
+          },
+          "content": {
+            "type": "string",
+            "description": "Message body. Base64 ciphertext in encrypted channels (type 1 and 2), plaintext in broadcast channels (type 3)."
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ID of the channel key used to encrypt `content`. Null in broadcast channels."
+          },
+          "iv": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "16-char hex IV used for `content`. Null in broadcast channels."
+          },
+          "nonce": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Client dedup token supplied by the sender, if any."
+          },
+          "timestamp": {
+            "type": "integer",
+            "description": "Send time in epoch milliseconds."
+          },
+          "edited_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Last edit time in epoch milliseconds, or null."
+          },
+          "replied_to": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ID of the message this replies to, or null."
+          },
+          "signature": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Base64 RSA-PSS (SHA-256) signature of the sender's signed timestamp, made with the sender's private key. Verify it against the sender's public key."
+          },
+          "signed_timestamp": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The epoch-seconds value the sender signed."
+          },
+          "user": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MessageUser"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The author, or null when the author is hidden (broadcast channels for non-privileged readers)."
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Attachment"
+            }
+          }
+        }
+      },
+      "MessageUser": {
+        "type": "object",
+        "description": "The author summary embedded in a message.",
+        "properties": {
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Author username, or null for webhook/system authors."
+          },
+          "display": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Author display name."
+          },
+          "pfp": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Author profile picture file ID."
+          }
+        }
+      },
+      "Attachment": {
+        "type": "object",
+        "description": "A file attached to a message.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "File ID. Download at /attachment/{id}."
+          },
+          "filename": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "size": {
+            "type": "integer",
+            "description": "Size in bytes."
+          },
+          "mimetype": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "encrypted": {
+            "type": "boolean",
+            "description": "Whether the file bytes are encrypted with the channel key."
+          },
+          "iv": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "IV for the attachment when encrypted."
+          }
+        }
+      },
+      "CommandOption": {
+        "type": "object",
+        "description": "One typed parameter of a slash command.",
+        "required": [
+          "name",
+          "description",
+          "type"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Option name. Must match [a-z0-9_-]{1,32}."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable label shown to the user (1\u2013100 chars)."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "string",
+              "integer",
+              "number",
+              "boolean",
+              "user",
+              "channel"
+            ],
+            "description": "`user` \u2192 caller supplies a user ID that is a member of the channel. `channel` \u2192 caller supplies a channel ID they belong to."
+          },
+          "required": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the option must be supplied."
+          },
+          "min_value": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Minimum value for integer/number options."
+          },
+          "max_value": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Maximum value for integer/number options."
+          },
+          "min_length": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Minimum character count for string options."
+          },
+          "max_length": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Maximum character count for string options."
+          },
+          "choices": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "description": "Up to 25 fixed choices. When present the option behaves as an enum.",
+            "maxItems": 25,
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "value"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Label shown in the UI."
+                },
+                "value": {
+                  "description": "Value sent in the interaction. Type must match the option's type."
+                }
+              }
+            }
+          }
+        }
+      },
+      "BotCommand": {
+        "type": "object",
+        "description": "A slash command definition.",
+        "required": [
+          "name",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Server-assigned command ID (present in GET responses, ignored on write)."
+          },
+          "name": {
+            "type": "string",
+            "description": "Command name without the slash. Must match [a-z0-9_-]{1,32}."
+          },
+          "description": {
+            "type": "string",
+            "description": "Shown in the autocomplete menu (1\u2013100 chars)."
+          },
+          "options": {
+            "type": "array",
+            "description": "Typed parameters the user fills before submitting. Max 25.",
+            "items": {
+              "$ref": "#/components/schemas/CommandOption"
+            }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "description": "Standard error shape. `success` is false and `error` is a human-readable message.",
+        "required": [
+          "error",
+          "success"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Present on partial-failure endpoints to list rejected fields."
+          },
+          "success": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          }
+        }
+      },
+      "RateLimitError": {
+        "type": "object",
+        "description": "Returned with HTTP 429 when a rate limit is exceeded.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "ratelimit": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "ip",
+              "user"
+            ],
+            "description": "Which limit tripped: per-IP or per-identity."
+          }
+        }
+      },
+      "Success": {
+        "type": "object",
+        "description": "Minimal success acknowledgement.",
+        "required": [
+          "success"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        }
+      },
+      "EmbedAsset": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "File id. Reference this from an embed's image/thumbnail/author.icon_url/footer.icon_url field."
+          },
+          "encrypted": {
+            "type": "boolean"
+          },
+          "iv": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "16-char AES IV, present when encrypted is true."
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

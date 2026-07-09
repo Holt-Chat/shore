@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta property="og:locale" content="en">
+<title>Holt API</title>
+<meta name="description" content="Complete HTTP API reference for the Holt chat platform, rendered from the OpenAPI spec.">
+<meta property="og:title" content="Holt API">
+<meta name="twitter:title" content="Holt API">
+<meta property="og:description" content="Complete HTTP API reference for the Holt chat platform, rendered from the OpenAPI spec.">
+<meta name="twitter:description" content="Complete HTTP API reference for the Holt chat platform, rendered from the OpenAPI spec.">
+<meta property="og:image" content="https://app.holt.chat/favicon.ico">
+<meta property="og:image:alt" content="Holt Logo">
+<meta name="twitter:image" content="https://app.holt.chat/favicon.ico">
+<meta name="theme-color" content="#141219">
+<meta property="og:url" content="https://app.holt.chat/api.html">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<style>
+:root{
+  --bg:#141219;--panel:#1d1a26;--panel-2:#2c2740;--line:rgba(236,234,245,0.10);
+  --text:#eceaf5;--muted:#a29db5;--faint:#6b6580;--accent:#9d7bff;
+  --get:#46d39a;--post:#9d7bff;--patch:#ff8a4c;--delete:#f4646e;--put:#4cc8ff;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--r:0.5rem;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,"Segoe UI",sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code,.path{font-family:var(--mono)}
+.layout{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+nav{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:22px 14px;border-right:1px solid var(--line);background:var(--panel)}
+nav .brand{font-weight:800;font-size:1.15rem;letter-spacing:-0.02em;margin-bottom:4px}
+nav .base{font-family:var(--mono);font-size:0.72rem;color:var(--faint);margin-bottom:18px}
+nav a{display:block;color:var(--muted);font-size:0.86rem;padding:4px 8px;border-radius:6px}
+nav a:hover{color:var(--text);background:var(--panel-2);text-decoration:none}
+nav .links{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:0.8rem}
+main{padding:34px clamp(18px,4vw,52px);max-width:980px}
+h1{font-size:1.9rem;letter-spacing:-0.03em;margin:0 0 6px}
+.lead{color:var(--muted);max-width:62ch;margin:0 0 28px}
+.tag-h{font-size:1.3rem;letter-spacing:-0.02em;margin:38px 0 4px;padding-top:10px}
+.tag-d{color:var(--muted);font-size:0.9rem;margin:0 0 14px}
+.ep{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);margin:10px 0;overflow:hidden}
+.ep-head{display:flex;gap:10px;align-items:center;padding:11px 14px;cursor:pointer}
+.ep-head:hover{background:var(--panel-2)}
+.m{font-family:var(--mono);font-weight:700;font-size:0.7rem;letter-spacing:0.04em;padding:3px 8px;border-radius:5px;color:var(--bg);flex:none;min-width:54px;text-align:center}
+.m.get{background:var(--get)}.m.post{background:var(--post)}.m.patch{background:var(--patch)}.m.delete{background:var(--delete)}.m.put{background:var(--put)}
+.ep-path{font-family:var(--mono);font-size:0.9rem;word-break:break-all}
+.ep-sum{color:var(--muted);font-size:0.84rem;margin-left:auto;text-align:right}
+.lock{color:var(--faint);font-size:0.72rem;flex:none}
+.ep-body{display:none;padding:4px 16px 16px;border-top:1px solid var(--line)}
+.ep.open .ep-body{display:block}
+.ep-desc{color:var(--muted);font-size:0.9rem;margin:12px 0}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.chip{font-size:0.72rem;font-family:var(--mono);color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:2px 8px}
+.chip b{color:var(--text);font-weight:600}
+h4{font-size:0.74rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--faint);margin:16px 0 6px}
+table{width:100%;border-collapse:collapse;font-size:0.85rem}
+td{padding:5px 8px 5px 0;border-bottom:1px solid var(--line);vertical-align:top;color:var(--muted)}
+td.n{font-family:var(--mono);color:var(--text);white-space:nowrap}
+td.t{font-family:var(--mono);color:var(--accent);font-size:0.8rem;white-space:nowrap}
+.req{color:var(--delete);font-size:0.68rem;font-weight:700}
+.opt{color:var(--faint);font-size:0.68rem}
+.resp{display:flex;gap:8px;align-items:baseline;font-size:0.85rem;padding:3px 0}
+.sc{font-family:var(--mono);font-weight:700;flex:none;min-width:34px}
+.sc.ok{color:var(--get)}.sc.err{color:var(--delete)}
+pre.ex{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-family:var(--mono);font-size:0.78rem;color:var(--text);overflow:auto;margin:5px 0 12px;white-space:pre}
+.err-note{color:var(--delete);padding:30px}
+@media(max-width:760px){.layout{grid-template-columns:1fr}nav{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}.ep-sum{display:none}}
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav><div class="brand">Holt API</div><div class="base" id="base">/api/v1</div><div id="navlinks"></div>
+    <div class="links"><a href="./media/api.openapi.json">OpenAPI 3.1 spec ↗</a><br><a href="./bot-api.html">Bot API guide ↗</a></div>
+  </nav>
+  <main>
+    <h1>Holt API</h1>
+    <p class="lead" id="lead">Loading the API reference…</p>
+    <div id="content"></div>
+  </main>
+</div>
+<script>
+let SPEC=null;
+const esc=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const refName=o=>{if(!o)return"";if(o.$ref)return o.$ref.split("/").pop();if(o.type==="array"&&o.items)return refName(o.items)+"[]";return o.type||"object";};
+const deref=s=>{if(s&&s.$ref&&SPEC)return SPEC.components.schemas[s.$ref.split("/").pop()]||{};return s||{};};
+function sample(s,depth){s=deref(s);depth=depth||0;if(depth>5)return null;if(s.example!==undefined)return s.example;if(s.enum)return s.enum[0];let t=s.type;if(Array.isArray(t))t=t.find(x=>x!=="null")||t[0];if(t==="array")return[sample(s.items,depth+1)];if(t==="object"||s.properties){const o={};for(const[k,v]of Object.entries(s.properties||{}))o[k]=sample(v,depth+1);return o;}if(t==="integer"||t==="number")return 0;if(t==="boolean")return false;if(t==="null")return null;return"string";}
+const exPre=s=>s?`<pre class="ex">${esc(JSON.stringify(sample(s),null,2))}</pre>`:"";
+function rl(op){const r=op["x-ratelimit"];if(!r)return"";let p=[`ip ${r.ip}`];if(r.user!=null)p.push(`user ${r.user}`);p.push(`${r.window}s`);return p.join(" · ");}
+function fields(schema){if(!schema)return[];const props=schema.properties||{};const req=schema.required||[];return Object.entries(props).map(([k,v])=>({name:k,type:refName(v),required:req.includes(k),desc:v.description||""}));}
+function reqBody(op){const rb=op.requestBody;if(!rb||!rb.content)return null;const ct=Object.keys(rb.content)[0];const sch=rb.content[ct].schema||{};return{ct,rows:fields(sch)};}
+function render(spec){
+  SPEC=spec;
+  document.getElementById("base").textContent=(spec.servers&&spec.servers[0]&&spec.servers[0].url)||"/api/v1";
+  document.getElementById("lead").innerHTML=esc(spec.info&&spec.info.description||"")+" Click any endpoint to expand.";
+  const tags=(spec.tags||[]).map(t=>t.name);
+  const byTag={};const order=[];
+  for(const [path,methods] of Object.entries(spec.paths)){
+    for(const [m,op] of Object.entries(methods)){
+      if(!["get","post","put","patch","delete"].includes(m))continue;
+      const tag=(op.tags&&op.tags[0])||"Other";
+      (byTag[tag]=byTag[tag]||[]).push({path,m,op});
+    }
+  }
+  const tagOrder=tags.filter(t=>byTag[t]).concat(Object.keys(byTag).filter(t=>!tags.includes(t)));
+  const navEl=document.getElementById("navlinks");const cEl=document.getElementById("content");
+  const tagDesc={};(spec.tags||[]).forEach(t=>tagDesc[t.name]=t.description||"");
+  for(const tag of tagOrder){
+    const id="t-"+tag.toLowerCase().replace(/[^a-z0-9]+/g,"-");
+    const a=document.createElement("a");a.href="#"+id;a.textContent=tag+" ("+byTag[tag].length+")";navEl.appendChild(a);
+    const sec=document.createElement("section");sec.id=id;
+    sec.innerHTML=`<h2 class="tag-h">${esc(tag)}</h2>`+(tagDesc[tag]?`<p class="tag-d">${esc(tagDesc[tag])}</p>`:"");
+    for(const {path,m,op} of byTag[tag]){
+      const ep=document.createElement("div");ep.className="ep";
+      const pub=Array.isArray(op.security)&&op.security.length===0;
+      const params=(op.parameters||[]);
+      const body=reqBody(op);
+      let bodyHtml="";
+      const pathP=params.filter(p=>p.in==="path"),queryP=params.filter(p=>p.in==="query");
+      const ptable=ps=>`<table>${ps.map(p=>`<tr><td class="n">${esc(p.name)}</td><td class="t">${esc(refName(p.schema)||"string")}</td><td>${p.required?'<span class="req">required</span>':'<span class="opt">optional</span>'} ${esc(p.description||"")}</td></tr>`).join("")}</table>`;
+      if(pathP.length)bodyHtml+=`<h4>Path parameters</h4>${ptable(pathP)}`;
+      if(queryP.length)bodyHtml+=`<h4>Query parameters</h4>${ptable(queryP)}`;
+      if(body&&body.rows.length)bodyHtml+=`<h4>Request body <span class="opt">(${esc(body.ct)})</span></h4><table>${body.rows.map(f=>`<tr><td class="n">${esc(f.name)}</td><td class="t">${esc(f.type)}</td><td>${f.required?'<span class="req">required</span>':'<span class="opt">optional</span>'} ${esc(f.desc)}</td></tr>`).join("")}</table>`;
+      const resps=op.responses||{};
+      bodyHtml+=`<h4>Responses</h4>`+Object.entries(resps).map(([sc,r])=>{const ok=/^2/.test(sc);const sch=r.content&&Object.values(r.content)[0]&&Object.values(r.content)[0].schema;const sn=sch?refName(sch):"";return `<div class="resp"><span class="sc ${ok?"ok":"err"}">${esc(sc)}</span><span>${esc(r.description||"")}${sn?` — <code>${esc(sn)}</code>`:""}</span></div>${ok?exPre(sch):""}`;}).join("");
+      ep.innerHTML=`<div class="ep-head"><span class="m ${m}">${m.toUpperCase()}</span><span class="ep-path">${esc(path)}</span>${pub?'<span class="lock">public</span>':'<span class="lock">🔒 bearer</span>'}<span class="ep-sum">${esc(op.summary||"")}</span></div><div class="ep-body">${op.description?`<p class="ep-desc">${esc(op.description)}</p>`:""}<div class="meta">${rl(op)?`<span class="chip">rate limit: <b>${esc(rl(op))}</b></span>`:""}</div>${bodyHtml}</div>`;
+      ep.querySelector(".ep-head").onclick=()=>ep.classList.toggle("open");
+      sec.appendChild(ep);
+    }
+    cEl.appendChild(sec);
+  }
+}
+fetch("./media/api.openapi.json").then(r=>r.json()).then(render).catch(e=>{document.getElementById("lead").innerHTML='<span class="err-note">Could not load ./media/api.openapi.json ('+esc(e.message)+'). Serve this page over HTTP.</span>';});
+</script>
+</body>
+</html>

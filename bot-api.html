@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta property="og:locale" content="en">
+<title>Holt Bot API</title>
+<meta name="description" content="Build bots that act as full end-to-end members of Holt channels. Token auth, RSA keypairs, rich embeds, and the endpoints a bot calls.">
+<meta property="og:title" content="Holt Bot API">
+<meta name="twitter:title" content="Holt Bot API">
+<meta property="og:description" content="Build bots that act as full end-to-end members of Holt channels. Token auth, RSA keypairs, rich embeds, and the endpoints a bot calls.">
+<meta name="twitter:description" content="Build bots that act as full end-to-end members of Holt channels. Token auth, RSA keypairs, rich embeds, and the endpoints a bot calls.">
+<meta property="og:image" content="https://app.holt.chat/favicon.ico">
+<meta property="og:image:alt" content="Holt Logo">
+<meta name="twitter:image" content="https://app.holt.chat/favicon.ico">
+<meta name="theme-color" content="#16161a">
+<meta property="og:url" content="https://app.holt.chat/bot-api.html">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<style>
+@font-face{font-family:"Lexend";src:url("./external/Lexend.ttf") format("truetype");font-weight:100 900;font-display:swap}
+:root{
+  --bg:#16161a;
+  --bg-raised:#1d1d23;
+  --bg-inset:#121216;
+  --line:#2a2a33;
+  --line-soft:#23232b;
+  --text:#eceaf5;
+  --muted:#b4afc9;
+  --faint:#7c7891;
+  --accent:#9d7bff;
+  --accent-dim:#6f57b8;
+  --warm:#ff8a4c;
+  --green:#46d39a;
+  --red:#f4646e;
+  --sans:"Lexend",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Code","JetBrains Mono",Menlo,Consolas,monospace;
+  --radius:0.6rem;
+  --radius-sm:0.4rem;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:2rem}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-weight:300;line-height:1.6;font-size:16px;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:3px}
+code{font-family:var(--mono);font-size:0.86em}
+h1,h2,h3{font-weight:600;line-height:1.2;letter-spacing:-0.02em;margin:0}
+.wrap{max-width:1080px;margin:0 auto;padding:0 1.5rem}
+
+/* ---- skip link ---- */
+.skip{position:absolute;left:-999px;top:0;background:var(--accent);color:#11111a;padding:0.6rem 1rem;border-radius:var(--radius-sm);z-index:50}
+.skip:focus{left:1rem;top:1rem}
+
+/* ---- top bar ---- */
+.topbar{position:sticky;top:0;z-index:30;background:rgba(22,22,26,0.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line-soft)}
+.topbar .wrap{display:flex;align-items:center;gap:1rem;height:60px}
+.brand{display:flex;align-items:center;gap:0.6rem;font-weight:600;letter-spacing:-0.02em}
+.brand .dot{width:11px;height:11px;border-radius:3px;background:var(--accent);box-shadow:0 0 0 4px rgba(157,123,255,0.16)}
+.brand small{font-weight:300;color:var(--faint);letter-spacing:0}
+.topbar nav{margin-left:auto;display:flex;gap:1.4rem;font-size:0.9rem}
+.topbar nav a{color:var(--muted)}
+.topbar nav a:hover{color:var(--text);text-decoration:none}
+@media (max-width:720px){.topbar nav{display:none}}
+
+/* ---- hero ---- */
+.hero{padding:5rem 0 3.5rem;border-bottom:1px solid var(--line-soft);position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:0;background:radial-gradient(620px 320px at 78% -10%,rgba(157,123,255,0.16),transparent 70%);pointer-events:none}
+.hero .wrap{position:relative;z-index:1;display:grid;grid-template-columns:1.15fr 0.85fr;gap:3rem;align-items:center}
+.eyebrow{font-family:var(--mono);font-size:0.74rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);margin-bottom:1.1rem}
+.hero h1{font-size:clamp(2.4rem,5.5vw,3.6rem);margin-bottom:1.1rem}
+.hero h1 em{font-style:normal;color:var(--warm)}
+.hero p{color:var(--muted);font-size:1.06rem;max-width:34ch;margin:0 0 1.8rem}
+.hero-cta{display:flex;flex-wrap:wrap;gap:0.75rem}
+.btn{display:inline-flex;align-items:center;gap:0.5rem;padding:0.62rem 1.1rem;border-radius:var(--radius-sm);font-size:0.92rem;font-weight:400;border:1px solid transparent}
+.btn-primary{background:var(--accent);color:#13101f}
+.btn-primary:hover{background:#ad90ff;text-decoration:none}
+.btn-ghost{border-color:var(--line);color:var(--text)}
+.btn-ghost:hover{border-color:var(--accent-dim);text-decoration:none}
+
+/* ---- identity card (signature) ---- */
+.idcard{background:var(--bg-inset);border:1px solid var(--line);border-radius:var(--radius);font-family:var(--mono);font-size:0.82rem;overflow:hidden;box-shadow:0 24px 60px -28px rgba(0,0,0,0.7)}
+.idcard .head{display:flex;align-items:center;gap:0.5rem;padding:0.65rem 0.9rem;border-bottom:1px solid var(--line-soft);background:var(--bg-raised)}
+.idcard .head b{width:9px;height:9px;border-radius:2px;background:var(--line);display:inline-block}
+.idcard .head b:nth-child(1){background:#3a3a45}
+.idcard .head span{margin-left:auto;color:var(--faint);font-size:0.72rem;letter-spacing:0.06em}
+.idcard .body{padding:1.05rem 1.1rem;display:grid;gap:0.5rem}
+.idrow{display:grid;grid-template-columns:7.5rem 1fr;gap:0.5rem;align-items:baseline}
+.idrow .k{color:var(--faint)}
+.idrow .v{color:var(--text);word-break:break-all}
+.idrow .v.acc{color:var(--green)}
+.idrow .v.warm{color:var(--warm)}
+.idrow .v.pur{color:var(--accent)}
+.idcaret{color:var(--accent);font-size:0.78em;vertical-align:baseline}
+@media (max-width:860px){.hero .wrap{grid-template-columns:1fr;gap:2.4rem}.hero p{max-width:46ch}}
+
+/* ---- sections ---- */
+main section{padding:4rem 0;border-bottom:1px solid var(--line-soft)}
+.sec-eyebrow{font-family:var(--mono);font-size:0.74rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--faint);margin-bottom:0.7rem}
+.sec-head h2{font-size:clamp(1.6rem,3.4vw,2rem);margin-bottom:0.7rem}
+.sec-head p{color:var(--muted);max-width:62ch;margin:0}
+.lead{margin-top:2rem;display:grid;gap:1.3rem}
+.lead p{color:var(--muted);max-width:70ch;margin:0}
+.lead strong{color:var(--text);font-weight:500}
+
+/* ---- model strip ---- */
+.model{margin-top:2.2rem;display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.model .card{background:var(--bg-raised);border:1px solid var(--line-soft);border-radius:var(--radius);padding:1.2rem 1.2rem 1.3rem}
+.model .card .n{font-family:var(--mono);font-size:0.78rem;color:var(--accent);margin-bottom:0.6rem}
+.model .card h3{font-size:1.02rem;margin-bottom:0.45rem}
+.model .card p{color:var(--muted);font-size:0.92rem;margin:0}
+@media (max-width:760px){.model{grid-template-columns:1fr}}
+
+/* ---- auth schemes ---- */
+.schemes{margin-top:2.2rem;display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;align-items:stretch}
+.scheme{display:flex;flex-direction:column}
+.scheme pre{margin-top:auto}
+.scheme{border:1px solid var(--line);border-radius:var(--radius);padding:1.3rem;background:var(--bg-raised);position:relative}
+.scheme.owner{border-left:3px solid var(--warm)}
+.scheme.bot{border-left:3px solid var(--accent)}
+.scheme h3{font-size:1.05rem;display:flex;align-items:center;gap:0.6rem;margin-bottom:0.6rem}
+.scheme p{color:var(--muted);font-size:0.92rem;margin:0 0 0.9rem}
+.scheme .auth-tag{font-family:var(--mono);font-size:0.7rem;letter-spacing:0.06em;text-transform:uppercase;padding:0.16rem 0.5rem;border-radius:var(--radius-sm)}
+.tag-owner{background:rgba(255,138,76,0.14);color:var(--warm)}
+.tag-bot{background:rgba(157,123,255,0.16);color:var(--accent)}
+.callout{margin-top:1.3rem;border:1px solid var(--line);border-left:3px solid var(--green);border-radius:var(--radius);padding:1rem 1.2rem;background:var(--bg-raised);color:var(--muted);font-size:0.92rem}
+.callout strong{color:var(--text);font-weight:500}
+@media (max-width:760px){.schemes{grid-template-columns:1fr}}
+
+/* ---- code blocks ---- */
+pre{background:var(--bg-inset);border:1px solid var(--line-soft);border-radius:var(--radius-sm);padding:0.85rem 1rem;overflow-x:auto;font-family:var(--mono);font-size:0.82rem;line-height:1.55;color:#d6d2ea}
+pre .c-cmd{color:var(--green)}
+pre .c-flag{color:var(--faint)}
+pre .c-url{color:var(--accent)}
+pre .c-str{color:var(--warm)}
+pre .c-key{color:#8fd0ff}
+pre .c-comment{color:#56546a}
+
+/* ---- endpoint ---- */
+.endpoint{border:1px solid var(--line-soft);border-radius:var(--radius);background:var(--bg-raised);margin-top:1.4rem;overflow:hidden}
+.ep-head{display:flex;align-items:center;gap:0.85rem;flex-wrap:wrap;padding:1rem 1.2rem;border-bottom:1px solid var(--line-soft)}
+.method{font-family:var(--mono);font-size:0.74rem;font-weight:500;letter-spacing:0.04em;padding:0.28rem 0.55rem;border-radius:var(--radius-sm);text-transform:uppercase}
+.m-get{background:rgba(70,211,154,0.14);color:var(--green)}
+.m-post{background:rgba(157,123,255,0.16);color:var(--accent)}
+.m-patch{background:rgba(255,138,76,0.15);color:var(--warm)}
+.m-delete{background:rgba(244,100,110,0.15);color:var(--red)}
+.ep-path{font-family:var(--mono);font-size:0.95rem;color:var(--text)}
+.ep-path .var{color:var(--accent)}
+.ep-auth{margin-left:auto;font-family:var(--mono);font-size:0.7rem;letter-spacing:0.05em;text-transform:uppercase;padding:0.2rem 0.55rem;border-radius:var(--radius-sm)}
+.ep-body{padding:1.2rem}
+.ep-purpose{color:var(--muted);margin:0 0 1.2rem;max-width:70ch}
+.ep-purpose code{color:var(--text);background:var(--bg-inset);padding:0.06rem 0.3rem;border-radius:3px}
+.fields-title{font-family:var(--mono);font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--faint);margin:1.4rem 0 0.7rem}
+table.fields{width:100%;border-collapse:collapse;font-size:0.9rem}
+table.fields th{text-align:left;font-weight:500;color:var(--faint);font-size:0.78rem;letter-spacing:0.04em;text-transform:uppercase;padding:0 0.8rem 0.55rem 0;border-bottom:1px solid var(--line-soft)}
+table.fields td{padding:0.6rem 0.8rem 0.6rem 0;border-bottom:1px solid var(--line-soft);vertical-align:top;color:var(--muted)}
+table.fields tr:last-child td{border-bottom:none}
+table.fields td.name{font-family:var(--mono);font-size:0.84rem;color:var(--text);white-space:nowrap}
+table.fields td.type{font-family:var(--mono);font-size:0.8rem;color:var(--accent);white-space:nowrap}
+.req{color:var(--warm);font-size:0.74rem;font-family:var(--mono)}
+.opt{color:var(--faint);font-size:0.74rem;font-family:var(--mono)}
+.ex-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;margin-top:1.4rem}
+.ex-grid>div{min-width:0}
+.schemes>.scheme{min-width:0}
+.errblock>div{min-width:0}
+.ex-grid .label{font-family:var(--mono);font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--faint);margin-bottom:0.5rem}
+@media (max-width:760px){.ex-grid{grid-template-columns:1fr}.ep-auth{margin-left:0}}
+
+/* ---- error shape ---- */
+.errblock{margin-top:2rem;display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;align-items:start}
+.errblock .txt p{color:var(--muted);margin:0 0 0.8rem;max-width:54ch}
+.errblock .txt p:last-child{margin-bottom:0}
+.errblock .txt code{color:var(--text);background:var(--bg-inset);padding:0.06rem 0.3rem;border-radius:3px}
+@media (max-width:760px){.errblock{grid-template-columns:1fr}}
+
+/* ---- footer ---- */
+footer{padding:3rem 0 4rem;color:var(--faint);font-size:0.88rem}
+footer .wrap{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between}
+footer a{color:var(--muted)}
+.kicker{color:var(--accent)}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <div class="wrap">
+    <span class="brand"><span class="dot" aria-hidden="true"></span>Holt <small>Bot API</small></span>
+    <nav aria-label="Sections">
+      <a href="#model">The model</a>
+      <a href="#auth">Auth</a>
+      <a href="#management">Management</a>
+      <a href="#actions">Actions</a>
+      <a href="#slashcommands">Slash commands</a>
+      <a href="#components">Components</a>
+      <a href="#embeds">Embeds</a>
+      <a href="#diagrams">Diagrams</a>
+      <a href="#interactive">Interactive content</a>
+      <a href="#ratelimits">Rate limits</a>
+      <a href="#errors">Errors</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <p class="eyebrow">/api/v1 &middot; OpenAPI 3.1</p>
+      <h1>A bot is a <em>member</em>, not a hook.</h1>
+      <p>Give an automated identity its own username, keypair, and a long-lived token. A channel member adds it, then it reads and posts as a full end-to-end member.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#actions">Read the endpoints</a>
+        <a class="btn btn-ghost" href="./media/bot-api.openapi.json">Download OpenAPI spec</a>
+      </div>
+    </div>
+    <div class="idcard" aria-hidden="true">
+      <div class="head"><b></b><b></b><b></b><span>bot.identity</span></div>
+      <div class="body">
+        <div class="idrow"><span class="k">type</span><span class="v pur">user-like identity</span></div>
+        <div class="idrow"><span class="k">owner</span><span class="v">a human account</span></div>
+        <div class="idrow"><span class="k">auth</span><span class="v warm">Bearer &lt;bot_token&gt;</span></div>
+        <div class="idrow"><span class="k">keypair</span><span class="v acc">RSA &middot; private kept local</span></div>
+        <div class="idrow"><span class="k">e2e</span><span class="v acc">full channel member</span></div>
+        <div class="idrow"><span class="k">added by</span><span class="v">a channel manager</span></div>
+        <div class="idrow"><span class="k">posts</span><span class="v pur">signed &middot; encrypted</span></div>
+        <div class="idrow"><span class="k">status</span><span class="v acc">ready <span class="idcaret">&#9608;</span></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main id="main">
+
+<section id="model">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="sec-eyebrow">The model</p>
+      <h2>How a Holt bot works</h2>
+      <p>A bot is not a webhook or a privileged server key. It is a real participant with the same shape as a person, owned and managed by a human.</p>
+    </div>
+    <div class="lead">
+      <p>A bot has its own <strong>username, display name, profile picture, and RSA keypair</strong>. A human account owns one or more bots and manages them with their normal logged-in session. Each bot authenticates with its own <strong>long-lived token</strong>, a 30-character nanoid, instead of the passkey challenge humans use to log in.</p>
+      <p>You generate the keypair <strong>client-side when you create the bot</strong>. The public key goes to the server as 392-character base64 DER; the private key stays with you and the server never sees it. The bot uses that private key to <strong>sign every message</strong> and to unwrap the per-channel symmetric keys, exactly like a human member. In encrypted channels the server holds only ciphertext.</p>
+      <p>A bot does not add itself. Someone already in the channel with the <strong>manage-members permission</strong> adds it by username, choosing the permissions it gets. A bot you mark <strong>public</strong> can also be added by anyone through an <strong>add-bot link</strong>; a <strong>private</strong> bot can only be added by its owner. Once inside, it reads and posts subject to the channel's permissions.</p>
+    </div>
+    <div class="model">
+      <div class="card">
+        <p class="n">// owned</p>
+        <h3>A human owns it</h3>
+        <p>Create, edit, rotate, and delete bots from your own account. There is no separate bot console.</p>
+      </div>
+      <div class="card">
+        <p class="n">// keyed</p>
+        <h3>It holds a keypair</h3>
+        <p>The bot signs messages and unwraps channel keys with a private key you keep. The server only stores its public key.</p>
+      </div>
+      <div class="card">
+        <p class="n">// member</p>
+        <h3>A manager adds it</h3>
+        <p>A channel member who can manage members adds it by username, or anyone adds a public bot via its add-bot link. From there it is a normal end-to-end member.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="auth">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="sec-eyebrow">Authentication</p>
+      <h2>Two tokens, one header</h2>
+      <p>Both schemes are HTTP bearer tokens. Which one you send depends on whether you are managing a bot as its owner or acting as the bot.</p>
+    </div>
+    <div class="schemes">
+      <div class="scheme owner">
+        <h3><span class="auth-tag tag-owner">owner session</span></h3>
+        <p>The human owner's session token. Authorizes the bot management endpoints under <code>/bots</code> and <code>/bot/{bot_id}</code>.</p>
+        <pre><span class="c-key">Authorization</span>: Bearer <span class="c-str">&lt;session_token&gt;</span></pre>
+      </div>
+      <div class="scheme bot">
+        <h3><span class="auth-tag tag-bot">bot token</span></h3>
+        <p>The bot's own 30-character token. Authorizes the chat endpoints the bot calls at runtime: channels, messages, invites, and the stream.</p>
+        <pre><span class="c-key">Authorization</span>: Bearer <span class="c-str">&lt;bot_token&gt;</span></pre>
+      </div>
+    </div>
+    <div class="callout">
+      <strong>The stream is the exception.</strong> EventSource can't set headers, so <code>GET /stream</code> takes auth as a query argument instead: <code>?authorization=Bearer &lt;bot_token&gt;</code>. Same value, different place.
+    </div>
+    <div class="callout">
+      <strong>The token is shown once.</strong> Creating a bot and rotating a token both return the token a single time in the response. Store it then. It can't be read back later, only replaced by rotating it.
+    </div>
+  </div>
+</section>
+
+<section id="management">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="sec-eyebrow">Bot management</p>
+      <h2>Endpoints the owner calls</h2>
+      <p>Send your <span style="color:var(--warm)">owner session</span> token. These create and maintain the bots on your account.</p>
+    </div>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-post">post</span>
+        <span class="ep-path">/bots</span>
+        <span class="ep-auth tag-owner">owner session</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Create a bot on your account. Generate the RSA keypair first and send the public key. The response carries the bot token once.</p>
+        <p class="fields-title">Body &middot; multipart/form-data</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">username</td><td class="type">string</td><td><span class="req">required</span></td><td>3 to 20 chars. Lowercase letters, digits, underscore, hyphen.</td></tr>
+            <tr><td class="name">public</td><td class="type">string</td><td><span class="req">required</span></td><td>RSA public key as base64 DER, exactly 392 chars. Generated client-side.</td></tr>
+            <tr><td class="name">display</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Display name, 2 to 24 chars. Omit to use the username.</td></tr>
+            <tr><td class="name">pfp</td><td class="type">file</td><td><span class="opt">optional</span></td><td>Profile picture. WebP only, 256x256 or smaller.</td></tr>
+          </tbody>
+        </table>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-flag">-X</span> POST <span class="c-url">https://holt.example/api/v1/bots</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $SESSION"</span> \
+  <span class="c-flag">-F</span> <span class="c-str">"username=deploy_bot"</span> \
+  <span class="c-flag">-F</span> <span class="c-str">"display=Deploy Bot"</span> \
+  <span class="c-flag">-F</span> <span class="c-str">"public=$PUBLIC_KEY_B64"</span></pre>
+          </div>
+          <div>
+            <p class="label">201 Created</p>
+            <pre>{
+  <span class="c-key">"bot"</span>: {
+    <span class="c-key">"id"</span>: <span class="c-str">"kXq8r2mZ7tLpV3nB1aWc"</span>,
+    <span class="c-key">"username"</span>: <span class="c-str">"deploy_bot"</span>,
+    <span class="c-key">"display"</span>: <span class="c-str">"Deploy Bot"</span>,
+    <span class="c-key">"pfp"</span>: null,
+    <span class="c-key">"public"</span>: <span class="c-str">"MIIBIjANBg..."</span>,
+    <span class="c-key">"created_at"</span>: 1718900000
+  },
+  <span class="c-key">"token"</span>: <span class="c-str">"V1StGXR8Z5jdHi6BM1aT7qP3"</span>,
+  <span class="c-key">"success"</span>: true
+}</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-get">get</span>
+        <span class="ep-path">/bots</span>
+        <span class="ep-auth tag-owner">owner session</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">List every bot you own, newest first.</p>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-url">https://holt.example/api/v1/bots</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $SESSION"</span></pre>
+          </div>
+          <div>
+            <p class="label">200 OK</p>
+            <pre>[
+  {
+    <span class="c-key">"id"</span>: <span class="c-str">"kXq8r2mZ7tLpV3nB1aWc"</span>,
+    <span class="c-key">"username"</span>: <span class="c-str">"deploy_bot"</span>,
+    <span class="c-key">"display"</span>: <span class="c-str">"Deploy Bot"</span>,
+    <span class="c-key">"pfp"</span>: null,
+    <span class="c-key">"public"</span>: <span class="c-str">"MIIBIjANBg..."</span>,
+    <span class="c-key">"created_at"</span>: 1718900000
+  }
+]</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-patch">patch</span>
+        <span class="ep-path">/bot/<span class="var">{bot_id}</span></span>
+        <span class="ep-auth tag-owner">owner session</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Update a bot's display name or picture. Send only the fields you're changing; an empty <code>display</code> clears it. At least one valid change is required.</p>
+        <p class="fields-title">Body &middot; multipart/form-data</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">display</td><td class="type">string</td><td><span class="opt">optional</span></td><td>New display name, 2 to 24 chars, or empty string to clear it.</td></tr>
+            <tr><td class="name">pfp</td><td class="type">file</td><td><span class="opt">optional</span></td><td>New picture. WebP only, 256x256 or smaller.</td></tr>
+            <tr><td class="name">remove_pfp</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Send <code>"1"</code> to remove the current profile picture and revert to the default. Ignored if <code>pfp</code> is also present.</td></tr>
+          </tbody>
+        </table>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-flag">-X</span> PATCH \
+  <span class="c-url">https://holt.example/api/v1/bot/kXq8r2mZ7tLpV3nB1aWc</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $SESSION"</span> \
+  <span class="c-flag">-F</span> <span class="c-str">"display=Release Bot"</span></pre>
+          </div>
+          <div>
+            <p class="label">200 OK</p>
+            <pre>{
+  <span class="c-key">"bot"</span>: {
+    <span class="c-key">"id"</span>: <span class="c-str">"kXq8r2mZ7tLpV3nB1aWc"</span>,
+    <span class="c-key">"username"</span>: <span class="c-str">"deploy_bot"</span>,
+    <span class="c-key">"display"</span>: <span class="c-str">"Release Bot"</span>,
+    <span class="c-key">"pfp"</span>: null
+  },
+  <span class="c-key">"errors"</span>: [],
+  <span class="c-key">"success"</span>: true
+}</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-post">post</span>
+        <span class="ep-path">/bot/<span class="var">{bot_id}</span>/token</span>
+        <span class="ep-auth tag-owner">owner session</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Rotate the bot's token. The old token stops working immediately and the new one is returned once. Update anything running the bot.</p>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-flag">-X</span> POST \
+  <span class="c-url">https://holt.example/api/v1/bot/kXq8r2mZ7tLpV3nB1aWc/token</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $SESSION"</span></pre>
+          </div>
+          <div>
+            <p class="label">201 Created</p>
+            <pre>{
+  <span class="c-key">"token"</span>: <span class="c-str">"9Lp2VmZ7tKxR3nB1aWcQs0d"</span>,
+  <span class="c-key">"success"</span>: true
+}</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-delete">delete</span>
+        <span class="ep-path">/bot/<span class="var">{bot_id}</span></span>
+        <span class="ep-auth tag-owner">owner session</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Delete a bot for good, along with its token and channel memberships.</p>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-flag">-X</span> DELETE \
+  <span class="c-url">https://holt.example/api/v1/bot/kXq8r2mZ7tLpV3nB1aWc</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $SESSION"</span></pre>
+          </div>
+          <div>
+            <p class="label">200 OK</p>
+            <pre>{ <span class="c-key">"success"</span>: true }</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section id="actions">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="sec-eyebrow">Bot actions</p>
+      <h2>Endpoints the bot calls</h2>
+      <p>Send the <span style="color:var(--accent)">bot token</span>. These are the runtime endpoints: find channels, read and send messages, resolve invites, and receive events. A bot is added to a channel by a manager (or its add-bot link), not by joining an invite itself.</p>
+    </div>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-get">get</span>
+        <span class="ep-path">/bots/me</span>
+        <span class="ep-auth tag-bot">bot token</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Return the bot's own identity. Useful to confirm a token works and learn the bot's ID. A human session gets <code>403</code> here.</p>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-url">https://holt.example/api/v1/bots/me</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $BOT_TOKEN"</span></pre>
+          </div>
+          <div>
+            <p class="label">200 OK</p>
+            <pre>{
+  <span class="c-key">"id"</span>: <span class="c-str">"kXq8r2mZ7tLpV3nB1aWc"</span>,
+  <span class="c-key">"username"</span>: <span class="c-str">"deploy_bot"</span>,
+  <span class="c-key">"display"</span>: <span class="c-str">"Deploy Bot"</span>,
+  <span class="c-key">"pfp"</span>: null,
+  <span class="c-key">"public"</span>: <span class="c-str">"MIIBIjANBg..."</span>,
+  <span class="c-key">"owner_id"</span>: <span class="c-str">"9bZ2pQ7rLm4Xt1Vn3KdC"</span>,
+  <span class="c-key">"is_bot"</span>: 1,
+  <span class="c-key">"created_at"</span>: 1718900000,
+  <span class="c-key">"success"</span>: true
+}</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-get">get</span>
+        <span class="ep-path">/channels</span>
+        <span class="ep-auth tag-bot">bot token</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">List the channels the bot belongs to, with each one's last message and the bot's effective permissions. This is how you discover channel IDs. <code>type</code> is 1 for DM, 2 for encrypted group, 3 for broadcast.</p>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-url">https://holt.example/api/v1/channels</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $BOT_TOKEN"</span></pre>
+          </div>
+          <div>
+            <p class="label">200 OK</p>
+            <pre>[
+  {
+    <span class="c-key">"id"</span>: <span class="c-str">"aT4cR9mZ7tLpV3nB1xWd"</span>,
+    <span class="c-key">"type"</span>: 2,
+    <span class="c-key">"name"</span>: <span class="c-str">"ops"</span>,
+    <span class="c-key">"pfp"</span>: null,
+    <span class="c-key">"permissions"</span>: 4,
+    <span class="c-key">"unread_count"</span>: 3,
+    <span class="c-key">"member_count"</span>: 5,
+    <span class="c-key">"last_message"</span>: null
+  }
+]</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-get">get</span>
+        <span class="ep-path">/channel/<span class="var">{channel_id}</span>/messages</span>
+        <span class="ep-auth tag-bot">bot token</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Read messages from a channel, newest first. In encrypted channels (type 1 and 2) <code>content</code> is base64 ciphertext that the bot decrypts locally with the key named in <code>key</code>. Poll with <code>after_message_id</code> to pull only new messages.</p>
+        <p class="fields-title">Query parameters</p>
+        <table class="fields">
+          <thead><tr><th>Param</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">limit</td><td class="type">int</td><td><span class="opt">optional</span></td><td>How many to return, 1 to 100. Default 50.</td></tr>
+            <tr><td class="name">offset</td><td class="type">int</td><td><span class="opt">optional</span></td><td>Skip this many from the newest. Default 0.</td></tr>
+            <tr><td class="name">before_messages</td><td class="type">int</td><td><span class="opt">optional</span></td><td>Extra older messages for context, 0 to 100.</td></tr>
+            <tr><td class="name">user_id</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Only messages from this user (20-char ID, or "0").</td></tr>
+            <tr><td class="name">before / after</td><td class="type">int</td><td><span class="opt">optional</span></td><td>Filter by timestamp in milliseconds.</td></tr>
+            <tr><td class="name">before_message_id</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Only messages before this message ID.</td></tr>
+            <tr><td class="name">after_message_id</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Only messages after this ID. Use for polling.</td></tr>
+          </tbody>
+        </table>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-url">"https://holt.example/api/v1/channel/aT4c.../messages?limit=20"</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $BOT_TOKEN"</span></pre>
+          </div>
+          <div>
+            <p class="label">200 OK</p>
+            <pre>[
+  {
+    <span class="c-key">"id"</span>: <span class="c-str">"mZ7tLpV3nB1aWcQs0dRf"</span>,
+    <span class="c-key">"content"</span>: <span class="c-str">"U2FsdGVkX1+ab3..."</span>,
+    <span class="c-key">"key"</span>: <span class="c-str">"k3yId9Qr2Lm4Xt1Vn3Kd"</span>,
+    <span class="c-key">"iv"</span>: <span class="c-str">"9f8b1c2d3e4a5b6c"</span>,
+    <span class="c-key">"nonce"</span>: <span class="c-str">"0a1b2c3d"</span>,
+    <span class="c-key">"timestamp"</span>: 1718900123456,
+    <span class="c-key">"edited_at"</span>: null,
+    <span class="c-key">"replied_to"</span>: null,
+    <span class="c-key">"signature"</span>: <span class="c-str">"Rk5..."</span>,
+    <span class="c-key">"signed_timestamp"</span>: 1718900123,
+    <span class="c-key">"user"</span>: { <span class="c-key">"username"</span>: <span class="c-str">"alice"</span>, <span class="c-key">"display"</span>: <span class="c-str">"Alice"</span>, <span class="c-key">"pfp"</span>: null },
+    <span class="c-key">"attachments"</span>: []
+  }
+]</pre>
+          </div>
+        </div>
+        <p class="fields-title">Message fields</p>
+        <table class="fields">
+          <tbody>
+            <tr><td class="name">content</td><td class="type">string</td><td></td><td>Base64 ciphertext in encrypted channels, plaintext in broadcast channels.</td></tr>
+            <tr><td class="name">key</td><td class="type">string|null</td><td></td><td>ID of the channel key that encrypted <code>content</code>. Null in broadcast channels.</td></tr>
+            <tr><td class="name">iv</td><td class="type">string|null</td><td></td><td>16-char hex IV for <code>content</code>. Null in broadcast channels.</td></tr>
+            <tr><td class="name">nonce</td><td class="type">string|null</td><td></td><td>Client dedup token set by the sender, if any.</td></tr>
+            <tr><td class="name">signature</td><td class="type">string|null</td><td></td><td>Base64 RSA-PSS (SHA-256) signature of the sender's signed timestamp. Verify against the sender's public key.</td></tr>
+            <tr><td class="name">signed_timestamp</td><td class="type">int|null</td><td></td><td>The epoch-seconds value the sender signed.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-post">post</span>
+        <span class="ep-path">/channel/<span class="var">{channel_id}</span>/messages</span>
+        <span class="ep-auth tag-bot">bot token</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Send a message. The bot needs the send-messages permission. Sign the current epoch-seconds <code>timestamp</code> with the bot's private key (RSA-PSS, SHA-256) and send the base64 <code>signature</code>. In encrypted channels (type 1 and 2) <code>content</code> is base64 ciphertext and you also send <code>key</code> and <code>iv</code>; in broadcast channels (type 3) content is plaintext and those are omitted.</p>
+        <p class="fields-title">Body &middot; multipart/form-data</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">content</td><td class="type">string</td><td><span class="req">required</span></td><td>Base64 ciphertext or plaintext. Required unless files are attached.</td></tr>
+            <tr><td class="name">timestamp</td><td class="type">int</td><td><span class="req">required</span></td><td>Epoch seconds you signed. Must be within the server's signature window.</td></tr>
+            <tr><td class="name">signature</td><td class="type">string</td><td><span class="req">required</span></td><td>Base64 RSA-PSS (SHA-256) signature of the timestamp, made with the bot's private key.</td></tr>
+            <tr><td class="name">key</td><td class="type">string</td><td><span class="opt">cond.</span></td><td>Current channel key ID. Required in encrypted channels.</td></tr>
+            <tr><td class="name">iv</td><td class="type">string</td><td><span class="opt">cond.</span></td><td>16-char hex IV for <code>content</code>. Required in encrypted channels.</td></tr>
+            <tr><td class="name">nonce</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Dedup token echoed back on the stream event.</td></tr>
+            <tr><td class="name">replied_to</td><td class="type">string</td><td><span class="opt">optional</span></td><td>ID of a message in this channel to reply to.</td></tr>
+            <tr><td class="name">files</td><td class="type">file[]</td><td><span class="opt">optional</span></td><td>File attachments.</td></tr>
+          </tbody>
+        </table>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-flag">-X</span> POST \
+  <span class="c-url">https://holt.example/api/v1/channel/aT4c.../messages</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $BOT_TOKEN"</span> \
+  <span class="c-flag">-F</span> <span class="c-str">"content=$CIPHERTEXT_B64"</span> \
+  <span class="c-flag">-F</span> <span class="c-str">"key=k3yId9Qr2Lm4Xt1Vn3Kd"</span> \
+  <span class="c-flag">-F</span> <span class="c-str">"iv=9f8b1c2d3e4a5b6c"</span> \
+  <span class="c-flag">-F</span> <span class="c-str">"timestamp=1718900123"</span> \
+  <span class="c-flag">-F</span> <span class="c-str">"signature=$SIGNATURE_B64"</span></pre>
+          </div>
+          <div>
+            <p class="label">201 Created</p>
+            <pre>{
+  <span class="c-key">"message_id"</span>: <span class="c-str">"mZ7tLpV3nB1aWcQs0dRf"</span>,
+  <span class="c-key">"attachments"</span>: [],
+  <span class="c-key">"success"</span>: true
+}</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-get">get</span>
+        <span class="ep-path">/channels/invite/<span class="var">{invite_code}</span></span>
+        <span class="ep-auth tag-bot">bot token</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Resolve an invite code to its channel so the bot can decide whether to join. This does not join.</p>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-url">https://holt.example/api/v1/channels/invite/team42</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $BOT_TOKEN"</span></pre>
+          </div>
+          <div>
+            <p class="label">200 OK</p>
+            <pre>{
+  <span class="c-key">"channel_id"</span>: <span class="c-str">"aT4cR9mZ7tLpV3nB1xWd"</span>,
+  <span class="c-key">"name"</span>: <span class="c-str">"ops"</span>,
+  <span class="c-key">"pfp"</span>: null,
+  <span class="c-key">"type"</span>: 2,
+  <span class="c-key">"member_count"</span>: 5,
+  <span class="c-key">"is_member"</span>: false,
+  <span class="c-key">"success"</span>: true
+}</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-post">post</span>
+        <span class="ep-path">/channel/<span class="var">{channel_id}</span>/bot</span>
+        <span class="ep-auth tag-owner">human session</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Add a bot to a channel. This is called by a <strong>human</strong> already in the channel who has the manage-members permission, not by the bot itself. A bot cannot self-join an invite anymore. Public bots can be added by any such member; a private bot only by its owner. The bot's permissions in the channel are set here.</p>
+        <p class="fields-title">Body &middot; multipart/form-data</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">bot</td><td class="type">string</td><td><span class="req">required</span></td><td>The bot's username or ID.</td></tr>
+            <tr><td class="name">permissions</td><td class="type">int</td><td><span class="opt">optional</span></td><td>Permission bits to grant the bot. Defaults to send-messages.</td></tr>
+          </tbody>
+        </table>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-flag">-X</span> POST \
+  <span class="c-url">https://holt.example/api/v1/channel/aT4c.../bot</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $SESSION"</span> \
+  <span class="c-flag">-F</span> <span class="c-str">"bot=deploy_bot"</span> \
+  <span class="c-flag">-F</span> <span class="c-str">"permissions=4"</span></pre>
+          </div>
+          <div>
+            <p class="label">200 OK</p>
+            <pre>{
+  <span class="c-key">"channel_id"</span>: <span class="c-str">"aT4cR9mZ7tLpV3nB1xWd"</span>,
+  <span class="c-key">"success"</span>: true
+}</pre>
+          </div>
+        </div>
+        <div class="callout">
+          <p>For public bots, the app builds a shareable <strong>add-bot link</strong>: <code>/?addBot=&lt;username&gt;&amp;permissions=&lt;bits&gt;</code>. Opening it prompts a channel manager to pick a channel and confirm. Private bots reject this and can only be added by their owner.</p>
+        </div>
+      </div>
+    </article>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-get">get</span>
+        <span class="ep-path">/stream</span>
+        <span class="ep-auth tag-bot">bot token &middot; query</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">A server-sent events stream of new messages, edits, deletes, and member changes. The real-time alternative to polling. Auth goes in the <code>authorization</code> query argument because EventSource can't set headers. Frames arrive as <code>event:</code> name plus a JSON <code>data:</code> payload, with a heartbeat comment about every 10 seconds.</p>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-flag">-N</span> \
+  <span class="c-url">"https://holt.example/api/v1/stream?authorization=Bearer%20$BOT_TOKEN"</span></pre>
+          </div>
+          <div>
+            <p class="label">200 &middot; text/event-stream</p>
+            <pre><span class="c-comment">: heartbeat</span>
+
+event: message_sent
+data: {<span class="c-key">"channel_id"</span>: <span class="c-str">"aT4c..."</span>,
+       <span class="c-key">"message"</span>: { <span class="c-key">"id"</span>: <span class="c-str">"mZ7t..."</span>,
+       <span class="c-key">"content"</span>: <span class="c-str">"..."</span> }}</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section id="slashcommands">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="sec-eyebrow">Slash commands</p>
+      <h2>Let users invoke your bot by name</h2>
+      <p>Register typed commands once; channel members trigger them by typing <code>/command-name</code> in the client. The app validates inputs against your schema before sending, so your bot receives a clean options map via SSE — no parsing, no freeform text matching.</p>
+    </div>
+    <div class="lead">
+      <p>Each command has a <strong>name</strong> (lowercase, 1–32 chars, <code>[a-z0-9_-]</code>), a <strong>description</strong> shown in the autocomplete menu, and an optional list of typed <strong>options</strong>. Options support six types: <code>string</code>, <code>integer</code>, <code>number</code>, <code>boolean</code>, <code>user</code> (a channel member ID), and <code>channel</code> (a channel the caller belongs to). Each option can carry constraints — <code>min_length</code>/<code>max_length</code> for strings, <code>min_value</code>/<code>max_value</code> for numbers, and a <code>choices</code> list of up to 25 fixed values for any type.</p>
+      <p>Commands are registered per-bot (not per-channel). Once a bot is a member of a channel, all its commands automatically appear in that channel's autocomplete. You can manage the full command set in one <code>PUT</code> call, or upsert and delete one at a time.</p>
+    </div>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-get">get</span>
+        <span class="ep-path">/bots/me/commands</span>
+        <span class="ep-auth tag-bot">bot token</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">List all commands the bot has registered, with full option schemas.</p>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-url">https://holt.example/api/v1/bots/me/commands</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $BOT_TOKEN"</span></pre>
+          </div>
+          <div>
+            <p class="label">200 OK</p>
+            <pre>[{
+  <span class="c-key">"id"</span>: <span class="c-str">"aT4cR9mZ7tLpV3nB1xWd"</span>,
+  <span class="c-key">"name"</span>: <span class="c-str">"ping"</span>,
+  <span class="c-key">"description"</span>: <span class="c-str">"Check bot latency"</span>,
+  <span class="c-key">"options"</span>: []
+}]</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-put" style="background:rgba(76,200,255,0.14);color:#4cc8ff">put</span>
+        <span class="ep-path">/bots/me/commands</span>
+        <span class="ep-auth tag-bot">bot token</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Atomically replace the bot's entire command set. All existing commands are deleted and the new list is inserted in one operation. Send an empty array to clear all commands. Max 100 commands. All commands are validated before any are saved.</p>
+        <p class="fields-title">Request body — <code>application/json</code> array</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">name</td><td class="type">string</td><td><span class="req">required</span></td><td>Command name. Must match <code>[a-z0-9_-]{1,32}</code>. Unique per bot.</td></tr>
+            <tr><td class="name">description</td><td class="type">string</td><td><span class="req">required</span></td><td>Shown in the autocomplete menu. 1–100 chars.</td></tr>
+            <tr><td class="name">options</td><td class="type">object[]</td><td><span class="opt">optional</span></td><td>Typed parameters. See the option fields table below.</td></tr>
+          </tbody>
+        </table>
+        <p class="fields-title">Option object fields</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">name</td><td class="type">string</td><td><span class="req">required</span></td><td>Must match <code>[a-z0-9_-]{1,32}</code>. Unique within the command.</td></tr>
+            <tr><td class="name">description</td><td class="type">string</td><td><span class="req">required</span></td><td>Label shown to the user. 1–100 chars.</td></tr>
+            <tr><td class="name">type</td><td class="type">string</td><td><span class="req">required</span></td><td><code>string</code> · <code>integer</code> · <code>number</code> · <code>boolean</code> · <code>user</code> · <code>channel</code></td></tr>
+            <tr><td class="name">required</td><td class="type">boolean</td><td><span class="opt">optional</span></td><td>Default <code>false</code>. User must fill this field before submitting.</td></tr>
+            <tr><td class="name">min_value / max_value</td><td class="type">number</td><td><span class="opt">optional</span></td><td>Numeric range for <code>integer</code> and <code>number</code> types.</td></tr>
+            <tr><td class="name">min_length / max_length</td><td class="type">integer</td><td><span class="opt">optional</span></td><td>Character bounds for <code>string</code> type.</td></tr>
+            <tr><td class="name">choices</td><td class="type">object[]</td><td><span class="opt">optional</span></td><td>Up to 25 <code>{ "name", "value" }</code> pairs. Renders as a dropdown and value is validated against the list.</td></tr>
+          </tbody>
+        </table>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Example</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-url">https://holt.example/api/v1/bots/me/commands</span> \
+  <span class="c-flag">-X PUT</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $BOT_TOKEN"</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Content-Type: application/json"</span> \
+  <span class="c-flag">-d</span> <span class="c-str">'[{
+  "name": "announce",
+  "description": "Post a channel announcement",
+  "options": [{
+    "name": "message",
+    "description": "Text to post",
+    "type": "string",
+    "required": true,
+    "max_length": 500
+  }, {
+    "name": "priority",
+    "description": "Urgency level",
+    "type": "string",
+    "choices": [
+      { "name": "Normal", "value": "normal" },
+      { "name": "Urgent", "value": "urgent" }
+    ]
+  }]
+}]'</span></pre>
+          </div>
+          <div>
+            <p class="label">200 OK — full new command list</p>
+            <pre>[{
+  <span class="c-key">"id"</span>: <span class="c-str">"aT4cR9mZ7tLpV3nB1xWd"</span>,
+  <span class="c-key">"name"</span>: <span class="c-str">"announce"</span>,
+  <span class="c-key">"description"</span>: <span class="c-str">"Post a channel announcement"</span>,
+  <span class="c-key">"options"</span>: [
+    { <span class="c-key">"name"</span>: <span class="c-str">"message"</span>, <span class="c-key">"type"</span>: <span class="c-str">"string"</span>,
+      <span class="c-key">"required"</span>: true, <span class="c-key">"max_length"</span>: 500 },
+    { <span class="c-key">"name"</span>: <span class="c-str">"priority"</span>, <span class="c-key">"type"</span>: <span class="c-str">"string"</span>,
+      <span class="c-key">"choices"</span>: [
+        { <span class="c-key">"name"</span>: <span class="c-str">"Normal"</span>, <span class="c-key">"value"</span>: <span class="c-str">"normal"</span> },
+        { <span class="c-key">"name"</span>: <span class="c-str">"Urgent"</span>, <span class="c-key">"value"</span>: <span class="c-str">"urgent"</span> }
+      ]}
+  ]
+}]</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-post">post</span>
+        <span class="ep-path">/bots/me/commands</span>
+        <span class="ep-auth tag-bot">bot token</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Create or update a single command by name. If a command with the same name exists it is replaced (options included). Fails if the bot already has 100 commands and the name is new. Same body shape as a single element of the <code>PUT</code> array.</p>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-url">https://holt.example/api/v1/bots/me/commands</span> \
+  <span class="c-flag">-X POST</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $BOT_TOKEN"</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Content-Type: application/json"</span> \
+  <span class="c-flag">-d</span> <span class="c-str">'{"name":"ping","description":"Check bot latency","options":[]}'</span></pre>
+          </div>
+          <div>
+            <p class="label">200 OK</p>
+            <pre>{
+  <span class="c-key">"id"</span>: <span class="c-str">"aT4cR9mZ7tLpV3nB1xWd"</span>,
+  <span class="c-key">"name"</span>: <span class="c-str">"ping"</span>,
+  <span class="c-key">"description"</span>: <span class="c-str">"Check bot latency"</span>,
+  <span class="c-key">"options"</span>: []
+}</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-delete">delete</span>
+        <span class="ep-path">/bots/me/commands/<span class="var">{name}</span></span>
+        <span class="ep-auth tag-bot">bot token</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Delete one command by name. Its options are cascade-deleted. Returns <code>404</code> if the command does not exist.</p>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-url">https://holt.example/api/v1/bots/me/commands/ping</span> \
+  <span class="c-flag">-X DELETE</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $BOT_TOKEN"</span></pre>
+          </div>
+          <div>
+            <p class="label">200 OK</p>
+            <pre>{ <span class="c-key">"success"</span>: true }</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <div class="sec-head" style="margin-top:3rem">
+      <h2 style="font-size:1.4rem">Receiving interactions</h2>
+      <p>When a channel member triggers one of your commands, your bot receives an <code>interaction_create</code> event on the SSE stream. The server has already validated all option values against your schema — you get clean, typed data.</p>
+    </div>
+    <div class="ex-grid" style="margin-top:1.4rem">
+      <div>
+        <p class="label">interaction_create SSE frame</p>
+        <pre>event: interaction_create
+data: {
+  <span class="c-key">"id"</span>: <span class="c-str">"mZ7tLpV3nB1aWcQs0dRf"</span>,
+  <span class="c-key">"channel_id"</span>: <span class="c-str">"aT4cR9mZ7tLpV3nB1xWd"</span>,
+  <span class="c-key">"user"</span>: {
+    <span class="c-key">"id"</span>: <span class="c-str">"9bZ2pQ7rLm4Xt1Vn3KdC"</span>,
+    <span class="c-key">"username"</span>: <span class="c-str">"alice"</span>,
+    <span class="c-key">"display"</span>: <span class="c-str">"Alice"</span>
+  },
+  <span class="c-key">"command"</span>: <span class="c-str">"announce"</span>,
+  <span class="c-key">"options"</span>: {
+    <span class="c-key">"message"</span>: <span class="c-str">"Deployment complete"</span>,
+    <span class="c-key">"priority"</span>: <span class="c-str">"urgent"</span>
+  }
+}</pre>
+      </div>
+      <div>
+        <p class="label">Minimal Node.js handler</p>
+        <pre><span class="c-comment">// listen on the SSE stream</span>
+<span class="c-cmd">const</span> es = new EventSource(
+  `${BASE}/stream?authorization=Bearer+${TOKEN}`
+);
+es.addEventListener(<span class="c-str">"interaction_create"</span>, e => {
+  <span class="c-cmd">const</span> ix = JSON.parse(e.data);
+  <span class="c-comment">// ix.command, ix.options, ix.channel_id, ix.user</span>
+  <span class="c-cmd">if</span> (ix.command === <span class="c-str">"announce"</span>) {
+    postMessage(ix.channel_id, ix.options.message);
+  }
+});</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="components">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="sec-eyebrow">Interactive components</p>
+      <h2>Buttons and modals</h2>
+      <p>Bots can attach clickable button rows to messages. When a user clicks a button, the bot receives a <code>component_interaction</code> SSE event and can respond with an acknowledgement or a modal form. Modal submissions arrive as <code>modal_submit</code> events.</p>
+      <p>Components work in <strong>all channel types</strong>. Bots use the same <code>POST /channel/{id}/messages</code> and <code>PATCH /channel/{id}/message/{id}</code> endpoints as users, with the addition of a <code>components</code> form field (JSON-encoded). Bots sign messages the same way users do — the same <code>timestamp</code> / <code>signature</code> fields apply.</p>
+    </div>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-post">post</span>
+        <span class="ep-path">/channel/<span class="var">{channel_id}</span>/messages</span>
+        <span class="ep-auth tag-bot">bot token</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Same endpoint as users. Bots sign messages the same way (multipart/form-data with <code>content</code>, <code>timestamp</code>, <code>signature</code>, and for encrypted channels <code>key</code> / <code>iv</code>). Bots additionally support a <code>components</code> field — a JSON-encoded array of up to 5 action rows.</p>
+        <p style="margin-top:1rem;font-weight:600;font-size:0.85rem">Extra field (bots only)</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">components</td><td class="type">string</td><td><span class="opt">optional</span></td><td>JSON-encoded ActionRow array. Up to 5 rows, up to 5 buttons each.</td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:1rem;font-weight:600;font-size:0.85rem">ActionRow</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">type</td><td class="type">int</td><td><span class="req">required</span></td><td>Must be <code>1</code>.</td></tr>
+            <tr><td class="name">components</td><td class="type">Button[]</td><td><span class="req">required</span></td><td>Up to 5 buttons.</td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:1rem;font-weight:600;font-size:0.85rem">Button</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">type</td><td class="type">int</td><td><span class="req">required</span></td><td>Must be <code>2</code>.</td></tr>
+            <tr><td class="name">style</td><td class="type">int</td><td><span class="req">required</span></td><td><code>1</code> primary · <code>2</code> secondary · <code>3</code> success · <code>4</code> danger · <code>5</code> link</td></tr>
+            <tr><td class="name">label</td><td class="type">string</td><td><span class="req">required</span></td><td>Button text.</td></tr>
+            <tr><td class="name">custom_id</td><td class="type">string</td><td>cond.</td><td>Required for styles 1–4. Echoed back in the interaction event.</td></tr>
+            <tr><td class="name">url</td><td class="type">string</td><td>cond.</td><td>Required for style 5. Opens in a new tab; sends no interaction event.</td></tr>
+            <tr><td class="name">disabled</td><td class="type">bool</td><td><span class="opt">optional</span></td><td>Renders the button greyed-out and non-clickable.</td></tr>
+          </tbody>
+        </table>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request (broadcast channel)</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-url">https://holt.example/api/v1/channel/CHAN_ID/messages</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $BOT_TOKEN"</span> \
+  <span class="c-flag">-F</span> <span class="c-str">content="Pick an option:"</span> \
+  <span class="c-flag">-F</span> <span class="c-str">timestamp=$TS</span> \
+  <span class="c-flag">-F</span> <span class="c-str">signature=$SIG</span> \
+  <span class="c-flag">-F</span> <span class="c-str">'components=[{"type":1,"components":[{"type":2,"style":1,"label":"Approve","custom_id":"approve"},{"type":2,"style":4,"label":"Deny","custom_id":"deny"}]}]'</span></pre>
+          </div>
+          <div>
+            <p class="label">201 Created</p>
+            <pre>{ <span class="c-key">"message_id"</span>: <span class="c-str">"..."</span>, <span class="c-key">"success"</span>: true }</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="endpoint" style="margin-top:2rem">
+      <div class="ep-head">
+        <span class="method m-patch">patch</span>
+        <span class="ep-path">/channel/<span class="var">{channel_id}</span>/message/<span class="var">{message_id}</span></span>
+        <span class="ep-auth tag-bot">bot token</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Same endpoint as users. Bots can edit their own messages. Pass <code>components</code> (JSON-encoded) to replace button rows — pass <code>[]</code> to clear all buttons. <code>content</code> is optional when <code>components</code> is provided; <code>timestamp</code> and <code>signature</code> are always required. Message ID stays the same.</p>
+        <p style="margin-top:1rem;font-weight:600;font-size:0.85rem">Extra field (bots only)</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">components</td><td class="type">string</td><td><span class="opt">optional</span></td><td>JSON-encoded ActionRow array. Pass <code>"[]"</code> to clear. Omit to leave unchanged.</td></tr>
+          </tbody>
+        </table>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request — update content + buttons (pagination)</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-flag">-X</span> PATCH <span class="c-url">https://holt.example/api/v1/channel/CHAN_ID/message/MSG_ID</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $BOT_TOKEN"</span> \
+  <span class="c-flag">-F</span> <span class="c-str">content="Page 2 of 5"</span> \
+  <span class="c-flag">-F</span> <span class="c-str">timestamp=$TS</span> \
+  <span class="c-flag">-F</span> <span class="c-str">signature=$SIG</span> \
+  <span class="c-flag">-F</span> <span class="c-str">'components=[{"type":1,"components":[{"type":2,"style":2,"label":"Back","custom_id":"page_back"},{"type":2,"style":1,"label":"Next","custom_id":"page_next"}]}]'</span></pre>
+          </div>
+          <div>
+            <p class="label">200 OK</p>
+            <pre>{ <span class="c-key">"success"</span>: true }</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <h2 style="font-size:1.4rem;margin-top:2.5rem">Receiving component interactions</h2>
+    <p>When a user clicks a button, your bot receives a <code>component_interaction</code> SSE event. You must respond within a reasonable time via the respond endpoint — once responded, the interaction is consumed.</p>
+    <div class="ex-grid">
+      <div>
+        <p class="label">component_interaction SSE frame</p>
+        <pre>event: component_interaction
+data: {
+  <span class="c-key">"interaction_id"</span>: <span class="c-str">"abc123..."</span>,
+  <span class="c-key">"channel_id"</span>:    <span class="c-str">"CHAN_ID"</span>,
+  <span class="c-key">"message_id"</span>:    <span class="c-str">"MSG_ID"</span>,
+  <span class="c-key">"custom_id"</span>:     <span class="c-str">"approve"</span>,
+  <span class="c-key">"user"</span>: { <span class="c-key">"id"</span>: <span class="c-str">"..."</span>, <span class="c-key">"username"</span>: <span class="c-str">"alice"</span>, <span class="c-key">"display"</span>: <span class="c-str">"Alice"</span> }
+}</pre>
+      </div>
+      <div>
+        <p class="label">Listening in JavaScript</p>
+        <pre>es.addEventListener(<span class="c-str">"component_interaction"</span>, e => {
+  <span class="c-cmd">const</span> ix = JSON.parse(e.data);
+  <span class="c-comment">// ix.custom_id tells you which button was clicked</span>
+  <span class="c-cmd">if</span> (ix.custom_id === <span class="c-str">"approve"</span>) {
+    respond(ix.interaction_id, { <span class="c-key">type</span>: <span class="c-str">"ack"</span> });
+    <span class="c-comment">// then send a follow-up message</span>
+  }
+});</pre>
+      </div>
+    </div>
+
+    <article class="endpoint" style="margin-top:2rem">
+      <div class="ep-head">
+        <span class="method m-post">post</span>
+        <span class="ep-path">/interactions/<span class="var">{interaction_id}</span>/respond</span>
+        <span class="ep-auth tag-bot">bot token</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Respond to a component interaction. Can acknowledge silently (<code>"ack"</code>) or open a modal form on the clicking user's screen (<code>"modal"</code>). Can only be called once per interaction.</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">type</td><td class="type">string</td><td><span class="req">required</span></td><td><code>"ack"</code> — no visible action. <code>"modal"</code> — open a form.</td></tr>
+            <tr><td class="name">title</td><td class="type">string</td><td>cond.</td><td>Modal heading (max 45 chars). Required when <code>type</code> is <code>"modal"</code>.</td></tr>
+            <tr><td class="name">custom_id</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Echoed back in the <code>modal_submit</code> event.</td></tr>
+            <tr><td class="name">components</td><td class="type">ActionRow[]</td><td>cond.</td><td>Modal fields. Required when <code>type</code> is <code>"modal"</code>. Each row holds one <code>type:4</code> (Text Input) component.</td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:1rem;font-weight:600;font-size:0.85rem">Text Input (type 4) fields</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">type</td><td class="type">int</td><td><span class="req">required</span></td><td>Must be <code>4</code>.</td></tr>
+            <tr><td class="name">custom_id</td><td class="type">string</td><td><span class="req">required</span></td><td>Key used in the <code>modal_submit</code> components map.</td></tr>
+            <tr><td class="name">label</td><td class="type">string</td><td><span class="req">required</span></td><td>Field label shown above the input.</td></tr>
+            <tr><td class="name">style</td><td class="type">int</td><td><span class="opt">optional</span></td><td><code>1</code> single-line (default) · <code>2</code> multi-line textarea.</td></tr>
+            <tr><td class="name">placeholder</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Grey hint text.</td></tr>
+            <tr><td class="name">value</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Pre-filled default.</td></tr>
+            <tr><td class="name">required</td><td class="type">bool</td><td><span class="opt">optional</span></td><td>Blocks submission if empty. Default false.</td></tr>
+            <tr><td class="name">min_length</td><td class="type">int</td><td><span class="opt">optional</span></td><td>Minimum character count.</td></tr>
+            <tr><td class="name">max_length</td><td class="type">int</td><td><span class="opt">optional</span></td><td>Maximum character count.</td></tr>
+          </tbody>
+        </table>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Respond with modal</p>
+            <pre><span class="c-cmd">curl</span> <span class="c-url">https://holt.example/api/v1/interactions/abc123/respond</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer $BOT_TOKEN"</span> \
+  <span class="c-flag">-H</span> <span class="c-str">"Content-Type: application/json"</span> \
+  <span class="c-flag">-d</span> <span class="c-str">'{
+  "type": "modal",
+  "title": "Denial reason",
+  "custom_id": "deny_modal",
+  "components": [{
+    "type": 1,
+    "components": [{
+      "type": 4,
+      "custom_id": "reason",
+      "label": "Why are you denying this?",
+      "style": 2,
+      "required": true,
+      "max_length": 500
+    }]
+  }]
+}'</span></pre>
+          </div>
+          <div>
+            <p class="label">200 OK</p>
+            <pre>{ <span class="c-key">"success"</span>: true }</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <h2 style="font-size:1.4rem;margin-top:2.5rem">Receiving modal submissions</h2>
+    <p>After the user fills out and submits the modal, the bot receives a <code>modal_submit</code> SSE event with a flat map of <code>custom_id → value</code> for every field.</p>
+    <div class="ex-grid">
+      <div>
+        <p class="label">modal_submit SSE frame</p>
+        <pre>event: modal_submit
+data: {
+  <span class="c-key">"interaction_id"</span>: <span class="c-str">"abc123..."</span>,
+  <span class="c-key">"user"</span>: { <span class="c-key">"id"</span>: <span class="c-str">"..."</span>, <span class="c-key">"username"</span>: <span class="c-str">"alice"</span>, <span class="c-key">"display"</span>: <span class="c-str">"Alice"</span> },
+  <span class="c-key">"components"</span>: {
+    <span class="c-key">"reason"</span>: <span class="c-str">"The request does not meet policy."</span>
+  }
+}</pre>
+      </div>
+      <div>
+        <p class="label">Listening in JavaScript</p>
+        <pre>es.addEventListener(<span class="c-str">"modal_submit"</span>, e => {
+  <span class="c-cmd">const</span> sub = JSON.parse(e.data);
+  <span class="c-comment">// sub.components["reason"] has the user's input</span>
+  processReason(sub.interaction_id, sub.components);
+});</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="embeds">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="sec-eyebrow">Rich content</p>
+      <h2>Embeds</h2>
+      <p>Embeds are not a separate endpoint or field. They live <strong>inside the message content</strong> you already send, and every client renders them. A bot posts an embed by putting an <code>! embed: {json}</code> line in the <code>content</code> of the normal send-message endpoint.</p>
+    </div>
+    <div class="lead">
+      <p>Each embed is one line that starts with <code>! embed:</code> (optionally indented) followed by a JSON object. The object may span multiple lines; it is read by balanced braces. A single message may carry up to <strong>10</strong> embeds. Any text in <code>content</code> outside the embed lines is the normal message body.</p>
+      <p>In encrypted channels (type 1 and 2) the whole <code>content</code>, embeds included, is encrypted client-side like any other message. Put the <code>! embed:</code> lines into the plaintext before you encrypt.</p>
+    </div>
+
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-post">post</span>
+        <span class="ep-path">embed fields</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">All fields are optional. Drop any you don't need. <code>description</code> and each field <code>value</code> render as markdown. <code>url</code> and <code>author.url</code> must be <code>http</code> or <code>https</code>; the renderer silently drops any other scheme. <code>image</code>, <code>thumbnail</code>, <code>author.icon_url</code>, and <code>footer.icon_url</code> are NOT plain URLs — clients refuse to auto-fetch an arbitrary http(s) image (that would leak the viewer's IP to whoever controls the URL just from opening the message). Instead, upload the image via <a href="#embed-asset">POST /channel/{channel_id}/embed-asset</a> below and put the returned <code>{id, encrypted, iv}</code> object directly in the field.</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">title</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Heading shown at the top of the embed.</td></tr>
+            <tr><td class="name">url</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Turns the title into a link. http(s) only.</td></tr>
+            <tr><td class="name">description</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Main body text. Rendered as markdown.</td></tr>
+            <tr><td class="name">color</td><td class="type">int | string</td><td><span class="opt">optional</span></td><td>Left accent bar. An integer like <code>5793266</code> or a <code>"#rrggbb"</code> hex string.</td></tr>
+            <tr><td class="name">author</td><td class="type">object</td><td><span class="opt">optional</span></td><td><code>{ "name", "url", "icon_url" }</code>. Small line above the title; <code>url</code> links the name (http(s) only), <code>icon_url</code> shows a small icon (an embed-asset object).</td></tr>
+            <tr><td class="name">fields</td><td class="type">object[]</td><td><span class="opt">optional</span></td><td>Array of <code>{ "name", "value", "inline" }</code>. <code>value</code> is markdown; <code>inline</code> is a bool that lets fields sit side by side.</td></tr>
+            <tr><td class="name">footer</td><td class="type">object</td><td><span class="opt">optional</span></td><td><code>{ "text", "icon_url" }</code>. Small line at the bottom; <code>icon_url</code> is an embed-asset object.</td></tr>
+            <tr><td class="name">timestamp</td><td class="type">int | string</td><td><span class="opt">optional</span></td><td>Unix seconds or an ISO-8601 string. Shown in the footer.</td></tr>
+            <tr><td class="name">image</td><td class="type">object</td><td><span class="opt">optional</span></td><td>An embed-asset object <code>{ "id", "encrypted", "iv" }</code> from the upload endpoint below. Large image below the body.</td></tr>
+            <tr><td class="name">thumbnail</td><td class="type">object</td><td><span class="opt">optional</span></td><td>An embed-asset object <code>{ "id", "encrypted", "iv" }</code> from the upload endpoint below. Small image in the top-right corner.</td></tr>
+          </tbody>
+        </table>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Example content</p>
+            <pre>Deploy finished, here are the details:
+<span class="c-comment">! embed:</span> {<span class="c-key">"title"</span>: <span class="c-str">"Build #1428"</span>, <span class="c-key">"description"</span>: <span class="c-str">"Shipped to **production** in 3m 12s."</span>, <span class="c-key">"color"</span>: <span class="c-str">"#9d7bff"</span>, <span class="c-key">"fields"</span>: [{<span class="c-key">"name"</span>: <span class="c-str">"Branch"</span>, <span class="c-key">"value"</span>: <span class="c-str">"main"</span>, <span class="c-key">"inline"</span>: true}, {<span class="c-key">"name"</span>: <span class="c-str">"Tests"</span>, <span class="c-key">"value"</span>: <span class="c-str">"312 passed"</span>, <span class="c-key">"inline"</span>: true}], <span class="c-key">"footer"</span>: {<span class="c-key">"text"</span>: <span class="c-str">"CI"</span>}, <span class="c-key">"timestamp"</span>: 1718900123}</pre>
+          </div>
+        </div>
+        <div class="callout">
+          <p>The body line and the embed line both go in the same <code>content</code> string, separated by a newline. The line above is the message body; the <code>! embed:</code> line becomes the card.</p>
+        </div>
+      </div>
+    </article>
+
+    <article class="endpoint" id="embed-asset">
+      <div class="ep-head">
+        <span class="method m-post">post</span>
+        <span class="ep-path">/channel/{channel_id}/embed-asset</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Uploads a single image to reference from an embed's <code>image</code>, <code>thumbnail</code>, <code>author.icon_url</code>, or <code>footer.icon_url</code> field. Multipart form, one required field: <code>image</code> (the file, must be <code>image/*</code>). In encrypted channels (type 1 DM, type 2 group), encrypt the raw file bytes client-side with the channel's current AES key first — the same way message attachments are encrypted — and send <code>encrypted=1</code>, <code>key</code> (the current channel key id), and <code>iv</code> (16 chars) alongside it. In broadcast channels, just upload the raw image with no extra fields.</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">image</td><td class="type">file</td><td><span class="req">required</span></td><td>The image file.</td></tr>
+            <tr><td class="name">encrypted</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Pass <code>"1"</code> to mark this upload as client-side encrypted (encrypted channels only).</td></tr>
+            <tr><td class="name">key</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Current channel AES key id. Required when <code>encrypted=1</code>.</td></tr>
+            <tr><td class="name">iv</td><td class="type">string</td><td><span class="opt">optional</span></td><td>16-char AES IV. Required when <code>encrypted=1</code>.</td></tr>
+          </tbody>
+        </table>
+        <p class="ep-purpose">Responds with <code>{ "id", "encrypted", "iv", "success" }</code> — put that object straight into the embed field. The upload is held in reserve (not yet visible to anyone) until you actually send a message whose <code>content</code> references its <code>id</code>; pass the file id(s) in a top-level <code>embed_asset_ids</code> JSON array field on the send-message request so the server knows to keep them. Uploads that never get referenced by a sent message are automatically cleaned up after about an hour.</p>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Response</p>
+            <pre>{
+  <span class="c-key">"id"</span>: <span class="c-str">"V1StGXR8_Z5jdHi6B-myT"</span>,
+  <span class="c-key">"encrypted"</span>: false,
+  <span class="c-key">"iv"</span>: null,
+  <span class="c-key">"success"</span>: true
+}</pre>
+          </div>
+        </div>
+        <div class="callout">
+          <p>Send the message with a matching <code>embed_asset_ids</code>: <code>embed_asset_ids: '["V1StGXR8_Z5jdHi6B-myT"]'</code> alongside <code>content</code> containing <code>! embed: {"image": {"id": "V1StGXR8_Z5jdHi6B-myT", "encrypted": false, "iv": null}}</code>.</p>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section id="diagrams">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="sec-eyebrow">Rich content</p>
+      <h2>Diagrams</h2>
+      <p>Same mechanism as embeds: put a <code>! diagram: {json}</code> line in <code>content</code> and every client renders it as an SVG diagram, drawn client-side from <a href="https://mermaid.js.org/" target="_blank" rel="noopener">Mermaid</a> syntax.</p>
+    </div>
+    <div class="lead">
+      <p>Rendering runs in Mermaid's <code>strict</code> security level, so HTML in node labels is not honored — this is a declarative diagram, not a place to run code. The resulting SVG is then loaded into a sandboxed <code>&lt;iframe sandbox&gt;</code> (no scripts, no same-origin, no network access at all) as a second layer of isolation. A single message may carry up to <strong>10</strong> embed/diagram/interactive blocks combined.</p>
+    </div>
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-post">post</span>
+        <span class="ep-path">diagram fields</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">One field.</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">code</td><td class="type">string</td><td><span class="req">required</span></td><td>Mermaid diagram source, up to 5000 characters.</td></tr>
+          </tbody>
+        </table>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Example content</p>
+            <pre>Here's how the deploy pipeline works:
+<span class="c-comment">! diagram:</span> {<span class="c-key">"code"</span>: <span class="c-str">"graph TD\nA[Push] --> B[Build]\nB --> C[Test]\nC --> D[Deploy]"</span>}</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section id="interactive">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="sec-eyebrow">Rich content</p>
+      <h2>Interactive content</h2>
+      <p>A <code>! interactive: {json}</code> line lets you ship a small self-contained HTML/CSS/JS widget inside a message — same mechanism as embeds and diagrams, no separate endpoint.</p>
+    </div>
+    <div class="lead">
+      <p>Clients render it as a collapsed card behind a <strong>"Click to run"</strong> gate — it never executes automatically. When a viewer clicks it, the client builds an HTML document from your <code>html</code>/<code>css</code>/<code>js</code> and loads it into a sandboxed <code>&lt;iframe sandbox="allow-scripts"&gt;</code> (no <code>allow-same-origin</code>, so it can never read the viewer's Holt session, cookies, or DOM) with a strict <code>Content-Security-Policy</code> that blocks all network access — no <code>fetch</code>, no images/fonts over http(s), nothing leaves the frame. The card always shows a persistent notice that the content is not part of Holt Chat and hasn't been verified by it.</p>
+      <p>Because it still runs arbitrary script for whoever clicks it (just isolated and network-less), keep it to genuinely interactive things — small games, calculators, visualizations — not anything that needs to call out or that handles data you care about keeping private.</p>
+    </div>
+    <article class="endpoint">
+      <div class="ep-head">
+        <span class="method m-post">post</span>
+        <span class="ep-path">interactive fields</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">All fields are optional, but you need at least one.</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">html</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Markup for the document body, up to 20000 characters.</td></tr>
+            <tr><td class="name">css</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Stylesheet, up to 10000 characters.</td></tr>
+            <tr><td class="name">js</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Script, up to 20000 characters. No network APIs will work — the frame's CSP blocks them.</td></tr>
+          </tbody>
+        </table>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Example content</p>
+            <pre>Try the click counter:
+<span class="c-comment">! interactive:</span> {<span class="c-key">"html"</span>: <span class="c-str">"&lt;button id=b&gt;Click me&lt;/button&gt; &lt;span id=n&gt;0&lt;/span&gt;"</span>, <span class="c-key">"js"</span>: <span class="c-str">"let n=0;b.onclick=()=>{n++;document.getElementById('n').textContent=n}"</span>}</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section id="ratelimits">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="sec-eyebrow">Rate limits</p>
+      <h2>Every endpoint has a budget</h2>
+      <p>Each endpoint uses a sliding window counted twice: per IP and per identity (your bot). The tighter of the two trips first. Every response carries <code>X-RateLimit-Limit</code>, <code>X-RateLimit-Remaining</code>, and <code>X-RateLimit-Reset</code> (a Unix timestamp), so read the headers and back off rather than hard-coding the numbers below, which can change per instance.</p>
+    </div>
+    <table class="fields">
+      <thead><tr><th>Endpoint</th><th>Per IP</th><th>Per bot</th><th>Window</th></tr></thead>
+      <tbody>
+        <tr><td class="name">POST /channel/{id}/messages</td><td>100</td><td>50</td><td>60s</td></tr>
+        <tr><td class="name">GET /channel/{id}/messages</td><td>200</td><td>100</td><td>60s</td></tr>
+        <tr><td class="name">GET /channels</td><td>100</td><td>50</td><td>60s</td></tr>
+        <tr><td class="name">GET /channels/invite/{code}</td><td>50</td><td>25</td><td>60s</td></tr>
+        <tr><td class="name">POST /channels/invite/{code}</td><td>20</td><td>10</td><td>60s</td></tr>
+        <tr><td class="name">GET /stream</td><td>10</td><td>5</td><td>60s</td></tr>
+        <tr><td class="name">GET /bots</td><td>60</td><td>30</td><td>60s</td></tr>
+        <tr><td class="name">GET /bots/me</td><td>60</td><td>30</td><td>60s</td></tr>
+        <tr><td class="name">POST /bots</td><td>10</td><td>5</td><td>5 min</td></tr>
+        <tr><td class="name">PATCH /bot/{id}</td><td>30</td><td>15</td><td>60s</td></tr>
+        <tr><td class="name">DELETE /bot/{id}</td><td>20</td><td>10</td><td>60s</td></tr>
+        <tr><td class="name">POST /bot/{id}/token</td><td>10</td><td>5</td><td>5 min</td></tr>
+        <tr><td class="name">GET /bots/me/commands</td><td>60</td><td>30</td><td>60s</td></tr>
+        <tr><td class="name">PUT /bots/me/commands</td><td>20</td><td>10</td><td>60s</td></tr>
+        <tr><td class="name">POST /bots/me/commands</td><td>60</td><td>30</td><td>60s</td></tr>
+        <tr><td class="name">DELETE /bots/me/commands/{name}</td><td>30</td><td>15</td><td>60s</td></tr>
+        <tr><td class="name">POST /channel/{id}/messages</td><td>100</td><td>50</td><td>60s</td></tr>
+        <tr><td class="name">PATCH /channel/{id}/message/{msgId}</td><td>150</td><td>75</td><td>60s</td></tr>
+        <tr><td class="name">POST /channel/{id}/messages/{msgId}/component</td><td>30</td><td>20</td><td>60s</td></tr>
+        <tr><td class="name">POST /interactions/{id}/respond</td><td>60</td><td>30</td><td>60s</td></tr>
+        <tr><td class="name">POST /interactions/{id}/modal-submit</td><td>20</td><td>10</td><td>60s</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="errors">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="sec-eyebrow">Errors &amp; limits</p>
+      <h2>One error shape, everywhere</h2>
+      <p>Failed requests share a single JSON shape, and every endpoint is rate limited per IP and per identity.</p>
+    </div>
+    <div class="errblock">
+      <div class="txt">
+        <p>On any failure, <code>success</code> is <code>false</code> and <code>error</code> is a human-readable message. Endpoints that can partially succeed, like editing a bot, also return an <code>errors</code> array listing the rejected fields.</p>
+        <p>Common statuses: <code>400</code> bad input, <code>401</code> missing or bad token, <code>403</code> not allowed, <code>404</code> not found, <code>413</code> file too large, <code>429</code> rate limited.</p>
+        <p>Rate limits return <code>429</code> with the <code>X-RateLimit-Limit</code>, <code>X-RateLimit-Remaining</code>, and <code>X-RateLimit-Reset</code> headers. The body's <code>type</code> tells you whether the per-IP or per-identity limit tripped.</p>
+      </div>
+      <div>
+        <p class="label" style="font-family:var(--mono);font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--faint);margin-bottom:0.5rem">Error body</p>
+        <pre>{
+  <span class="c-key">"error"</span>: <span class="c-str">"Channel not found"</span>,
+  <span class="c-key">"success"</span>: false
+}</pre>
+        <p class="label" style="font-family:var(--mono);font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--faint);margin:1rem 0 0.5rem">Rate limit body &middot; 429</p>
+        <pre>{
+  <span class="c-key">"success"</span>: false,
+  <span class="c-key">"ratelimit"</span>: true,
+  <span class="c-key">"type"</span>: <span class="c-str">"user"</span>
+}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span><span class="kicker">Holt Bot API</span> &middot; base <code>/api/v1</code></span>
+    <span>Import the <a href="./media/bot-api.openapi.json">OpenAPI 3.1 spec</a> into Postman, Insomnia, or your codegen.</span>
+  </div>
+</footer>
+
+</body>
+</html>
