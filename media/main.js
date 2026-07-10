@@ -1465,12 +1465,60 @@ class MediaCom extends HTMLElement {
   <span>${sanitizeHTML(rawName)} · ${formatBytes(this.getAttribute('data-size'))} ${encrypted?'<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256"><path d="M127.5 0C164.779 0 195 30.2208 195 67.5V100H203C214.046 100 223 108.954 223 120V236C223 247.046 214.046 256 203 256H53C41.9543 256 33 247.046 33 236V120C33 108.954 41.9543 100 53 100H60V67.5C60 30.2208 90.2208 0 127.5 0ZM127.5 24C103.476 24 84 43.4756 84 67.5V100H171V67.5C171 43.4756 151.524 24 127.5 24Z"/></svg>':''}<div style="flex:1"></div><button data-id="${sanitizeMinimChars(id)}" data-name="${sanitizeAttr(rawName)}" onclick="window.downloadfile(this.dataset.id, this.dataset.name)" aria-label="Download" tlang="message.download"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M128 190V20" stroke-width="40" stroke-linecap="round" fill="none"/><path d="M127.861 212.999C131.746 213.035 135.642 211.571 138.606 208.607L209.317 137.896C212.291 134.922 213.753 131.011 213.708 127.114C213.708 127.076 213.71 127.038 213.71 127C213.71 118.716 206.994 112 198.71 112H57C48.7157 112 42 118.716 42 127C42 127.045 42.0006 127.089 42.001 127.134C41.961 131.024 43.4252 134.927 46.3936 137.896L117.104 208.607L117.381 208.876C120.312 211.662 124.092 213.037 127.861 212.999Z"/><rect y="226" width="256" height="30" rx="15"/></svg></button></span>
   ${sanitizeHTML(data)}
 </div>`;
+    } else if (type==='audio') {
+      if (!FileStore.has(id)&&data) FileStore.set(id, URL.createObjectURL(new Blob([data], { type: this.getAttribute('data-fulltype') })));
+      renderAudioMessage(this, FileStore.get(id)??src, id, desanitizeAttr(this.getAttribute('data-name')));
+      window.translate();
     } else {
       if (!FileStore.has(id)&&data) FileStore.set(id, URL.createObjectURL(new Blob([data], { type: this.getAttribute('data-fulltype') })));
       this.outerHTML = `<${type} data-id="${sanitizeMinimChars(id)}" data-fulltype="${sanitizeHTML(this.getAttribute('data-fulltype'))}" src="${FileStore.get(id)??src}" alt="Message attachment: ${sanitizeHTML(this.getAttribute('data-name'))}" controls draggable="false" loading="lazy"${type==='img'?` role="button" tabindex="0" aria-haspopup="dialog" onclick="window.expandMedia('${FileStore.get(id)??src}')" onkeydown="if([' ','Enter'].includes(event.key))window.expandMedia('${FileStore.get(id)??src}');" tlang="message.expandmedia"`:''}></${type}>`.replace('</img>','');
       window.translate();
     }
   }
+}
+function apFmt(t){t=Math.max(0,t|0);return Math.floor(t/60)+":"+String(t%60).padStart(2,"0")}
+async function apPeaks(src, buckets){
+  try{
+    let ctx = window.__apctx??(window.__apctx=new (window.AudioContext||window.webkitAudioContext)());
+    let ab = await ctx.decodeAudioData(await (await fetch(src)).arrayBuffer());
+    let ch = ab.getChannelData(0), block = Math.floor(ch.length/buckets)||1, peaks = [], max = 0.0001;
+    for (let i=0;i<buckets;i++){ let s=0, o=i*block; for (let j=0;j<block;j++){ let v=Math.abs(ch[o+j]||0); if (v>s) s=v; } peaks.push(s); if (s>max) max=s; }
+    return { peaks: peaks.map(p=>Math.max(p/max, 0.06)), duration: ab.duration };
+  }catch(e){ return null; }
+}
+function apDraw(canvas, peaks, progress, accent, muted){
+  let ctx = canvas.getContext("2d"), dpr = window.devicePixelRatio||1, w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w||!h) return;
+  if (canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){ canvas.width=Math.round(w*dpr); canvas.height=Math.round(h*dpr); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  let n = peaks.length, bw = w/n, bar = Math.max(bw*0.55, 2);
+  for (let i=0;i<n;i++){
+    let ph = Math.max((peaks[i]||0)*(h-4), 3), x = i*bw+(bw-bar)/2, y = (h-ph)/2;
+    ctx.fillStyle = ((i+0.5)/n)<=progress?accent:muted;
+    ctx.beginPath();
+    ctx.roundRect(x, y, bar, ph, bar/2);
+    ctx.fill();
+  }
+}
+function renderAudioMessage(el, src, id, name){
+  let cs = getComputedStyle(document.documentElement);
+  let accent = cs.getPropertyValue("--accent").trim()||"#9d7bff", muted = cs.getPropertyValue("--text-3").trim()||"#8a84a1";
+  el.innerHTML = `<div class="audioplayer"><button class="ap-play" aria-label="Play"><svg class="ap-i-play" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg><svg class="ap-i-pause" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" style="display:none"><path d="M6 5h4v14H6zM14 5h4v14h-4z" fill="currentColor"/></svg></button><canvas class="ap-wave"></canvas><span class="ap-time">0:00</span><button class="ap-dl" data-id="${sanitizeMinimChars(id)}" data-name="${sanitizeAttr(name)}" onclick="window.downloadfile(this.dataset.id,this.dataset.name)" aria-label="Download" tlang="message.download"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256"><path d="M128 190V20" stroke="currentColor" stroke-width="40" stroke-linecap="round" fill="none"/><path d="M42 127H214L128 213Z" fill="currentColor"/><rect y="226" width="256" height="30" rx="15" fill="currentColor"/></svg></button></div>`;
+  let root = el.querySelector(".audioplayer"), canvas = root.querySelector(".ap-wave"), playBtn = root.querySelector(".ap-play"), iPlay = root.querySelector(".ap-i-play"), iPause = root.querySelector(".ap-i-pause"), timeEl = root.querySelector(".ap-time");
+  let audio = new Audio(src), peaks = Array.from({length:56}, ()=>0.14), dur = 0, raf = 0;
+  let redraw = ()=>apDraw(canvas, peaks, dur?audio.currentTime/dur:0, accent, muted);
+  let loop = ()=>{ redraw(); timeEl.innerText=apFmt(dur?dur-audio.currentTime:audio.currentTime); if (!audio.paused) raf=requestAnimationFrame(loop); };
+  apPeaks(src, 56).then(r=>{ if (r){ peaks=r.peaks; if (r.duration&&isFinite(r.duration)){ dur=r.duration; timeEl.innerText=apFmt(dur); } } redraw(); });
+  audio.onloadedmetadata = ()=>{ if (!dur&&isFinite(audio.duration)){ dur=audio.duration; timeEl.innerText=apFmt(dur); } };
+  audio.onplay = ()=>{ iPlay.style.display="none"; iPause.style.display=""; playBtn.setAttribute("aria-label","Pause"); cancelAnimationFrame(raf); loop(); };
+  audio.onpause = ()=>{ iPlay.style.display=""; iPause.style.display="none"; playBtn.setAttribute("aria-label","Play"); cancelAnimationFrame(raf); redraw(); };
+  audio.onended = ()=>{ audio.currentTime=0; timeEl.innerText=apFmt(dur); redraw(); };
+  audio.ontimeupdate = ()=>{ if (audio.paused){ redraw(); } };
+  playBtn.onclick = ()=>{ if (audio.paused) audio.play(); else audio.pause(); };
+  canvas.onclick = (ev)=>{ let rct=canvas.getBoundingClientRect(), x=Math.min(Math.max((ev.clientX-rct.left)/rct.width, 0), 1); if (dur){ audio.currentTime=x*dur; redraw(); } };
+  new ResizeObserver(redraw).observe(canvas);
+  requestAnimationFrame(redraw);
 }
 customElements.define('media-com', MediaCom);
 

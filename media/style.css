@@ -1410,6 +1410,64 @@ emoji-picker {
   border: none;
   background: transparent;
 }
+.message .audioplayer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  min-width: min(280px, 62dvw);
+  max-width: min(440px, 82dvw);
+  padding: 8px 10px;
+  border-radius: var(--roundness-1);
+  backdrop-filter: brightness(0.8);
+}
+.message .audioplayer .ap-play {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.message .audioplayer .ap-play:hover {
+  filter: brightness(1.12);
+}
+.message .audioplayer .ap-wave {
+  flex: 1;
+  height: 34px;
+  min-width: 70px;
+  cursor: pointer;
+  touch-action: none;
+}
+.message .audioplayer .ap-time {
+  flex-shrink: 0;
+  min-width: 36px;
+  text-align: right;
+  font-size: 0.78rem;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.message .audioplayer .ap-dl {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 2px;
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  display: flex;
+  transition: color 0.15s;
+}
+.message .audioplayer .ap-dl:hover {
+  color: var(--text-1);
+}
 .message textarea {
   width: 100%;
   margin: 0;
