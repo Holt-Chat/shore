@@ -551,6 +551,7 @@ function processImageToPfp(file) {
 }
 
 function notify(type, data, context=null) {
+  if (window.HoltNative) return; // native app shows background notifications itself; the Web Notification API is unavailable in the WebView
   if (localStorage.getItem('pnotif')==='false') return;
   if (window.myStatus==='dnd') return;
   if (Notification.permission !== 'granted') {

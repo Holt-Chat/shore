@@ -3096,13 +3096,15 @@ function startStream() {
       if (window.currentChannel===data.channel_id) document.getElementById('m-nonce-'+data.message.nonce)?.remove();
     } else {
       window.channels[0].unread_count += 1;
-      playSFX('message');
       if (window.currentChannel===data.channel_id&&document.hasFocus()) {
+        playSFX('message');
         window.channels[0].unread_count = 0;
         backendfetch(`/api/v1/channel/${data.channel_id}/messages/ack`, { method: 'POST' });
       } else {
         let notifstate = getNotifStateChannel(window.channels[0].id, window.channels[0].type);
-        if (notifstate==='all'||(notifstate==='mentions'&&(new RegExp('@('+window.username+'|e)(?![a-zA-Z0-9_\\-])','im')).test(window.messages[data.channel_id][0].content))) notify('message', window.messages[data.channel_id][0], data.channel_id);
+        let willNotify = localStorage.getItem('pnotif')==='true'&&(notifstate==='all'||(notifstate==='mentions'&&(new RegExp('@('+window.username+'|e)(?![a-zA-Z0-9_\\-])','im')).test(window.messages[data.channel_id][0].content)));
+        if (document.hasFocus()||willNotify) playSFX('message');
+        if (willNotify) notify('message', window.messages[data.channel_id][0], data.channel_id);
       }
     }
     // Show
