@@ -190,13 +190,14 @@ function applyMyStatus() {
   applyPresence(window.username);
 }
 window.applyMyStatus = applyMyStatus;
-async function setMyStatus(status) {
+async function setMyStatus(status, auto=false) {
   autoIdled = false;
   window.myStatus = status;
   applyMyStatus();
   document.querySelectorAll('.status-pick').forEach(s=>s.dataset.status = status);
   let f = new FormData();
   f.append('status', status);
+  f.append('auto', auto?'1':'0');
   backendfetch('/api/v1/me/status', {method: 'PATCH', body: f});
 }
 window.setMyStatus = setMyStatus;
@@ -212,7 +213,7 @@ function markActive() {
 ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'focus'].forEach(e=>window.addEventListener(e, markActive, {passive: true}));
 setInterval(()=>{
   // Auto-idle after 10 mins of no activity, only from online (never overrides dnd/invisible/manual idle)
-  if (window.username&&window.myStatus==='online'&&Date.now()-lastActivity>10*60*1000) { setMyStatus('idle'); autoIdled = true; }
+  if (window.username&&window.myStatus==='online'&&Date.now()-lastActivity>10*60*1000) { setMyStatus('idle', true); autoIdled = true; }
 }, 30000);
 window.setPrivacyShare = setPrivacyShare;
 let lastTypingSent = 0;
@@ -4021,7 +4022,8 @@ window.showuserdata = (me)=>{
     UserStore.set(me.username, Object.merge(UserStore.get(me.username), me));
     window.username = sanitizeMinimChars(me.username);
     window.myId = me.id;
-    if (me.presence) window.myStatus = me.presence;
+    if (me.presence==='idle'&&me.status_auto) setMyStatus('online');
+    else if (me.presence) window.myStatus = me.presence;
     applyMyStatus();
     window.servers[window.servers.findIndex(srv=>srv.id===window.currentServer)].name = me.username;
     localStorage.setItem('servers', JSON.stringify(window.servers));
