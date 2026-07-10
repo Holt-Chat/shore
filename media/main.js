@@ -3477,7 +3477,7 @@ async function verifyStartScan() {
   let v = m.querySelector('.verify-video');
   // The paste field is always shown for code-based verification; this just adds camera scanning on top when available.
   try {
-    verifyStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    verifyStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } });
   } catch (e) {
     notice('verify.nocamera');
     return;
@@ -3486,7 +3486,9 @@ async function verifyStartScan() {
   v.style.display = '';
   await v.play();
   // BarcodeDetector is missing on desktop Linux Chrome, so decode frames with jsQR when it isn't available.
-  let detector = ('BarcodeDetector' in window)?new BarcodeDetector({ formats: ['qr_code'] }):null;
+  let formats = [];
+  try { if ('BarcodeDetector' in window) formats = await BarcodeDetector.getSupportedFormats(); } catch (e) {}
+  let detector = (!window.HoltNative && formats.includes('qr_code'))?new BarcodeDetector({ formats: ['qr_code'] }):null;
   let canvas = document.createElement('canvas');
   let ctx = canvas.getContext('2d', { willReadFrequently: true });
   verifyLoop = setInterval(async()=>{
@@ -3496,8 +3498,9 @@ async function verifyStartScan() {
         let codes = await detector.detect(v);
         if (codes.length) await verifyHandleCode(codes[0].rawValue);
       } else {
-        canvas.width = v.videoWidth;
-        canvas.height = v.videoHeight;
+        let scale = Math.min(1, 640/Math.max(v.videoWidth, v.videoHeight));
+        canvas.width = Math.round(v.videoWidth*scale);
+        canvas.height = Math.round(v.videoHeight*scale);
         ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
         let img = ctx.getImageData(0, 0, canvas.width, canvas.height);
         let code = jsQR(img.data, img.width, img.height);
@@ -3550,6 +3553,8 @@ window.renderDeviceLink = async()=>{
   let req = m.querySelector('.dl-request');
   wait.style.display = '';
   req.style.display = 'none';
+  m.querySelector('.dl-status').setAttribute('tlang', 'devicelink.waiting');
+  window.translate();
   let res = await backendfetch('/api/v1/devicelink/start', { method: 'POST' });
   if (!res||!res.code) { notice('error.generic'); return; }
   deviceLinkCode = res.code;

@@ -264,7 +264,7 @@ async function deviceLoginStartScan() {
   let v = m.querySelector('.dll-video');
   let paste = m.querySelector('.dll-paste');
   try {
-    DeviceLoginStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    DeviceLoginStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } });
   } catch (e) {
     paste.placeholder = await getTranslation('verify.nocamera');
     paste.focus();
@@ -273,7 +273,9 @@ async function deviceLoginStartScan() {
   v.srcObject = DeviceLoginStream;
   v.style.display = '';
   await v.play();
-  let detector = ('BarcodeDetector' in window)?new BarcodeDetector({ formats: ['qr_code'] }):null;
+  let formats = [];
+  try { if ('BarcodeDetector' in window) formats = await BarcodeDetector.getSupportedFormats(); } catch (e) {}
+  let detector = (!window.HoltNative && formats.includes('qr_code'))?new BarcodeDetector({ formats: ['qr_code'] }):null;
   let canvas = document.createElement('canvas');
   let ctx = canvas.getContext('2d', { willReadFrequently: true });
   DeviceLoginPoll = setInterval(async()=>{
@@ -283,8 +285,9 @@ async function deviceLoginStartScan() {
         let codes = await detector.detect(v);
         if (codes.length) deviceLoginHandleCode(codes[0].rawValue);
       } else {
-        canvas.width = v.videoWidth;
-        canvas.height = v.videoHeight;
+        let scale = Math.min(1, 640/Math.max(v.videoWidth, v.videoHeight));
+        canvas.width = Math.round(v.videoWidth*scale);
+        canvas.height = Math.round(v.videoHeight*scale);
         ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
         let img = ctx.getImageData(0, 0, canvas.width, canvas.height);
         let code = jsQR(img.data, img.width, img.height);
