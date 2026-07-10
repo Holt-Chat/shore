@@ -1468,6 +1468,33 @@ emoji-picker {
 .message .audioplayer .ap-dl:hover {
   color: var(--text-1);
 }
+#s-android span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.s-android-btn {
+  padding: 4px 12px;
+  border: none;
+  border-radius: var(--roundness-1);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.s-android-btn.s-android-on {
+  background: var(--bg-3);
+  color: var(--text-2);
+}
+.s-android-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-3);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
 .message textarea {
   width: 100%;
   margin: 0;

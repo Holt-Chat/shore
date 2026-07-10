@@ -18,6 +18,15 @@ const PKChannels = [];
 window.ChannelNotifStore = ChannelNotifStore;
 window.PinnedChannelsStore = PinnedChannelsStore;
 window.PKStore = PKStore;
+function syncHoltNotifs(){
+  if (!window.HoltNative||!window.HoltNative.syncNotifConfig) return;
+  try{
+    let muted = (window.channels||[]).filter(ch=>getNotifStateChannel(ch.id, ch.type)==='none').map(ch=>ch.id);
+    window.HoltNative.syncNotifConfig(JSON.stringify({ enabled: localStorage.getItem('pnotif')==='true', muted }));
+  }catch(e){}
+}
+window.syncHoltNotifs = syncHoltNotifs;
+document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='hidden') syncHoltNotifs(); });
 window.PKVerified = PKVerified;
 
 async function saveToDB() {
@@ -329,8 +338,18 @@ async function loadDynStrings() {
     ongoing: (await g('channel.call.ongoing'))||'Ongoing call',
     join: (await g('channel.call.join'))||'Join'
   };
+  window.timeStrings = {
+    today: (await g('time.today'))||'today',
+    yesterday: (await g('time.yesterday'))||'yesterday',
+    tomorrow: (await g('time.tomorrow'))||'tomorrow'
+  };
 }
 loadDynStrings();
+window.setLanguage = (lang)=>{
+  localStorage.setItem('language', lang);
+  window.translate();
+  loadDynStrings().then(()=>{ window.renderPeerStatus?.(); window.renderTyping?.(); });
+};
 async function BasicSend(msg, sign, channel, akey=null, iv=null) {
   let formData = new FormData();
   // Data
@@ -2876,6 +2895,7 @@ window.notifPanel = ()=>{
   select.onchange = ()=>{
     ChannelNotifStore.set(window.currentChannel, select.value);
     saveToDB();
+    syncHoltNotifs();
   };
 };
 window.pinsPanel = ()=>{
@@ -4112,7 +4132,7 @@ document.getElementById('srv-theme').value = localStorage.getItem('ptheme')??'#9
 tippy([document.getElementById('btn-languages'),document.getElementById('srv-btn-languages'),document.getElementById('lx-btn-languages')], {
   allowHTML: true,
   content: '<span tlang="lang.change">Change language</span>'+Array.from(new Set(Object.values(languages)))
-    .map(lang=>`<button onclick="localStorage.setItem('language','${lang}');window.translate()">${getLanguageName(lang)}</button>`)
+    .map(lang=>`<button onclick="window.setLanguage('${lang}')">${getLanguageName(lang)}</button>`)
     .join('')+`<span><label for="s-rtl" tlang="settings.rtl">RTL:</label><input id="s-rtl" type="checkbox" onchange="document.querySelector('body').style.setProperty('direction',this.checked?'rtl':'');localStorage.setItem('prtl',this.checked)"${localStorage.getItem('prtl')==='true'?' checked':''}></span>
 <span><label tlang="lang.timeuilang" for="timeuilang">Time uses ui locale</label><input id="timeuilang" type="checkbox" onchange="localStorage.setItem('timeUILang',this.checked)"></span>`,
   interactive: true,
@@ -4224,6 +4244,14 @@ function postLogin() {
   <label for="s-webpush" tlang="settings.webpush">Background notifications:</label>
   <input id="s-webpush" type="checkbox"${localStorage.getItem('pwebpush')==='true'?' checked':''}>
 </span>`:'')+`
+<b tlang="settings.app" id="s-android-h" style="display:none">App</b>
+<div id="s-android" style="display:none">
+  <span><label tlang="settings.app.notifperm">System notifications:</label><button id="s-android-notif" class="s-android-btn"></button></span>
+  <span><label tlang="settings.app.battery">Background running:</label><button id="s-android-battery" class="s-android-btn"></button></span>
+  <span><label tlang="settings.app.autostart">More settings:</label><button id="s-android-appinfo" class="s-android-btn" tlang="settings.app.open">Open settings</button></span>
+  <span><label tlang="settings.app.cache">Clear cache:</label><button id="s-android-cache" class="s-android-btn"></button></span>
+  <small class="s-android-note" tlang="settings.app.note">For reliable notifications: allow notifications and set battery to unrestricted.</small>
+</div>
 <span>
   <label for="s-ma" tlang="settings.medialways">Load media on mobile data:</label>
   <input id="s-ma" type="checkbox" onchange="localStorage.setItem('pmedialways',this.checked)"${localStorage.getItem('pmedialways')==='true'?' checked':''}>
@@ -4298,6 +4326,7 @@ function postLogin() {
       // Notifs
       document.getElementById('s-notif').onchange = (evt)=>{
         localStorage.setItem('pnotif', evt.target.checked);
+        syncHoltNotifs();
         if (Notification.permission !== 'granted') {
           Notification.requestPermission().then((permission) => {
             if (permission !== 'granted') {
@@ -4342,6 +4371,38 @@ function postLogin() {
       document.getElementById('s-call-mic').oninput = (evt)=>{ localStorage.setItem('pcall-mic', evt.target.value); window.setCallMicVolume?.(evt.target.value); };
       document.getElementById('s-call-master').value = localStorage.getItem('pcall-master')??100;
       document.getElementById('s-call-master').oninput = (evt)=>{ localStorage.setItem('pcall-master', evt.target.value); window.setCallMasterVolume?.(evt.target.value); };
+      // Android app: OS permission walkthrough
+      if (window.HoltNative&&window.HoltNative.platform) {
+        document.getElementById('s-android-h').style.display = '';
+        document.getElementById('s-android').style.display = '';
+        let refreshAndroid = ()=>{
+          let nb = document.getElementById('s-android-notif'), bb = document.getElementById('s-android-battery');
+          if (!nb||!bb) return;
+          let ng = window.HoltNative.notifGranted();
+          nb.setAttribute('tlang', ng?'settings.app.enabled':'settings.app.enable');
+          nb.classList.toggle('s-android-on', ng);
+          let bu = window.HoltNative.batteryUnrestricted();
+          bb.setAttribute('tlang', bu?'settings.app.enabled':'settings.app.allow');
+          bb.classList.toggle('s-android-on', bu);
+          let cb = document.getElementById('s-android-cache');
+          if (cb&&window.HoltNative.cacheBytes) cb.textContent = formatBytes(window.HoltNative.cacheBytes());
+          window.translate();
+        };
+        document.getElementById('s-android-notif').onclick = ()=>window.HoltNative.requestNotifications();
+        document.getElementById('s-android-battery').onclick = ()=>window.HoltNative.requestBattery();
+        document.getElementById('s-android-appinfo').onclick = ()=>window.HoltNative.openAppInfo();
+        document.getElementById('s-android-cache').onclick = ()=>{ window.HoltNative.clearCache?.(); setTimeout(refreshAndroid, 500); };
+        // Web Push does not work in the WebView; the native service handles background notifications, gated by the main toggle below
+        let wp = document.getElementById('s-webpush');
+        if (wp&&wp.closest('span')) wp.closest('span').style.display = 'none';
+        document.getElementById('s-notif').onchange = (evt)=>{
+          localStorage.setItem('pnotif', evt.target.checked);
+          syncHoltNotifs();
+          if (evt.target.checked&&!window.HoltNative.notifGranted()) window.HoltNative.requestNotifications();
+        };
+        refreshAndroid();
+        document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='visible') refreshAndroid(); });
+      }
     }
   });
 

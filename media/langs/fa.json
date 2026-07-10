@@ -505,5 +505,18 @@
 	"slash.toolong": "خیلی طولانی",
 	"slash.outofrange": "خارج از محدوده",
 	"slash.notchoice": "باید یکی از گزینه‌ها باشد",
-	"slash.missingrequired": "همه فیلدهای الزامی را پر کنید"
+	"slash.missingrequired": "همه فیلدهای الزامی را پر کنید",
+	"settings.app": "برنامه",
+	"settings.app.notifperm": "اعلان‌های سیستم:",
+	"settings.app.battery": "اجرا در پس‌زمینه:",
+	"settings.app.autostart": "تنظیمات بیشتر:",
+	"settings.app.open": "باز کردن تنظیمات",
+	"settings.app.note": "برای اعلان‌های مطمئن: اجازه اعلان‌ها را بدهید و باتری را بدون محدودیت کنید.",
+	"settings.app.enable": "فعال کردن",
+	"settings.app.enabled": "فعال",
+	"settings.app.allow": "اجازه",
+	"settings.app.cache": "پاک کردن حافظهٔ پنهان:",
+	"time.today": "امروز",
+	"time.yesterday": "دیروز",
+	"time.tomorrow": "فردا"
 }

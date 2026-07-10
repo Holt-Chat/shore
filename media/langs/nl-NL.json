@@ -505,5 +505,18 @@
 	"slash.toolong": "Te lang",
 	"slash.outofrange": "Buiten bereik",
 	"slash.notchoice": "Moet een van de opties zijn",
-	"slash.missingrequired": "Vul alle verplichte velden in"
+	"slash.missingrequired": "Vul alle verplichte velden in",
+	"settings.app": "App",
+	"settings.app.notifperm": "Systeemmeldingen:",
+	"settings.app.battery": "Op achtergrond draaien:",
+	"settings.app.autostart": "Meer instellingen:",
+	"settings.app.open": "Instellingen openen",
+	"settings.app.note": "Voor betrouwbare meldingen: sta meldingen toe en zet de batterij op onbeperkt.",
+	"settings.app.enable": "Inschakelen",
+	"settings.app.enabled": "Ingeschakeld",
+	"settings.app.allow": "Toestaan",
+	"settings.app.cache": "Cache wissen:",
+	"time.today": "vandaag",
+	"time.yesterday": "gisteren",
+	"time.tomorrow": "morgen"
 }

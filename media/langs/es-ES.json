@@ -505,5 +505,18 @@
 	"slash.toolong": "Demasiado largo",
 	"slash.outofrange": "Fuera de rango",
 	"slash.notchoice": "Debe ser una de las opciones",
-	"slash.missingrequired": "Rellena todos los campos requeridos"
+	"slash.missingrequired": "Rellena todos los campos requeridos",
+	"settings.app": "Aplicacion",
+	"settings.app.notifperm": "Notificaciones del sistema:",
+	"settings.app.battery": "Ejecucion en segundo plano:",
+	"settings.app.autostart": "Mas ajustes:",
+	"settings.app.open": "Abrir ajustes",
+	"settings.app.note": "Para notificaciones fiables: permite las notificaciones y pon la bateria sin restricciones.",
+	"settings.app.enable": "Activar",
+	"settings.app.enabled": "Activado",
+	"settings.app.allow": "Permitir",
+	"settings.app.cache": "Borrar cache:",
+	"time.today": "hoy",
+	"time.yesterday": "ayer",
+	"time.tomorrow": "mañana"
 }

@@ -505,5 +505,18 @@
 	"slash.toolong": "Too long",
 	"slash.outofrange": "Out of range",
 	"slash.notchoice": "Must be one of the options",
-	"slash.missingrequired": "Fill in all required fields"
+	"slash.missingrequired": "Fill in all required fields",
+	"settings.app": "App",
+	"settings.app.notifperm": "System notifications:",
+	"settings.app.battery": "Background running:",
+	"settings.app.autostart": "More settings:",
+	"settings.app.open": "Open settings",
+	"settings.app.note": "For reliable notifications: allow notifications and set battery to unrestricted.",
+	"settings.app.enable": "Enable",
+	"settings.app.enabled": "Enabled",
+	"settings.app.allow": "Allow",
+	"settings.app.cache": "Clear cache:",
+	"time.today": "today",
+	"time.yesterday": "yesterday",
+	"time.tomorrow": "tomorrow"
 }

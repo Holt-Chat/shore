@@ -248,8 +248,9 @@ function formatTime(date) {
 
   let prefix = '';
   if (Math.abs(diff)<=1) {
-    prefix = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
-      .format(diff, 'day');
+    let ts = window.timeStrings;
+    if (ts) prefix = diff===0?ts.today:diff===-1?ts.yesterday:ts.tomorrow;
+    else prefix = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(diff, 'day');
   } else {
     prefix = new Intl.DateTimeFormat(locale, {
       year: 'numeric',
