@@ -611,16 +611,30 @@ function sfxVolume(cat) {
   let v = localStorage.getItem('psfx-'+cat);
   return Math.max(0, Math.min(100, Number(v??60)))/100;
 }
+const sfxCache = {};
+function getSFX(name) {
+  if (!sfxCache[name]) { let a = new Audio('./media/sfx/'+name+'.wav'); a.preload = 'auto'; a.load(); sfxCache[name] = a; }
+  return sfxCache[name];
+}
 function playSFX(name) {
   let cat = sfxCategories[name];
   if (!cat) return;
   let vol = sfxVolume(cat);
   if (vol<=0) return;
-  let audio = new Audio('./media/sfx/'+name+'.wav');
+  // Reuse a preloaded element: Chrome defers loading a freshly-created Audio in a background tab, which delays notif sounds until refocus
+  let audio = getSFX(name);
   audio.volume = vol;
+  audio.currentTime = 0;
   audio.play().catch(()=>{});
 }
 window.playSFX = playSFX;
+let sfxUnlocked = false;
+function unlockSFX() {
+  if (sfxUnlocked) return;
+  sfxUnlocked = true;
+  Object.keys(sfxCategories).forEach(getSFX);
+}
+['mousedown', 'keydown', 'touchstart'].forEach(e=>window.addEventListener(e, unlockSFX, {passive: true}));
 let callRing = null;
 window.playCallRing = (sound='call-incoming')=>{
   if (callRing) return;
