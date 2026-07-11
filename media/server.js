@@ -1,10 +1,18 @@
 let onlineServers = {};
 let extraServers = {};
 let checkingServers = {};
+let retryAttempts = {};
+let nextRetryAt = {};
+const MAX_RETRY_ATTEMPTS = 8;
+const RETRY_BASE_DELAY = 200;
+const RETRY_MAX_DELAY = 15000;
 window.servers = JSON.parse(localStorage.getItem('servers'))??[];
 
 function normalizeServer(url) {
   return url.replaceAll(/\/+$/g,'');
+}
+function serverCheckDue(url) {
+  return onlineServers[url]===undefined && (!nextRetryAt[url] || Date.now()>=nextRetryAt[url]);
 }
 async function checkServer(url) {
   url = normalizeServer(url);
@@ -20,13 +28,18 @@ async function checkServer(url) {
     } catch(err) {
       res = {};
     }
-    // A failed/unreachable attempt is left undefined (not cached as offline) so the
-    // periodic check keeps retrying it instead of getting stuck greyed-out until reload.
     let ok = (res.running==='Holt'&&backendVersions.includes(res.version));
     if (ok) {
       window.serverData[url] = res;
       onlineServers[url] = true;
       extraServers[url] = { dev: res.dev??false, vermiss: !backendVersions.includes(res.version) };
+      retryAttempts[url] = 0;
+    } else {
+      // A failed/unreachable attempt backs off and retries (up to MAX_RETRY_ATTEMPTS) instead of
+      // getting stuck greyed-out until reload; once attempts are exhausted it settles on offline.
+      retryAttempts[url] = (retryAttempts[url]||0)+1;
+      if (retryAttempts[url]>=MAX_RETRY_ATTEMPTS) onlineServers[url] = false;
+      else nextRetryAt[url] = Date.now()+Math.min(RETRY_BASE_DELAY*(2**retryAttempts[url]), RETRY_MAX_DELAY);
     }
     delete checkingServers[url];
     return ok;
@@ -161,17 +174,15 @@ window.currentServer = '';
 })();
 
 checkOnlineInter = setInterval(()=>{
-  let con = false;
+  let pending = false;
   window.servers.forEach(srv=>{
-    if (con) return;
-    if (onlineServers[srv.url]===undefined) {
-      con = true;
-      checkServer(srv.url)
-        .then(()=>{
-          showServerList();
-        });
-      return;
-    }
+    if (onlineServers[srv.url]!==undefined) return;
+    pending = true;
+    if (!serverCheckDue(srv.url)) return;
+    checkServer(srv.url)
+      .then(()=>{
+        showServerList();
+      });
   });
-  if (!con) clearInterval(checkOnlineInter);
+  if (!pending) clearInterval(checkOnlineInter);
 }, 200);
