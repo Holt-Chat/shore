@@ -165,6 +165,7 @@ function mdRedo() { if (mdHistoryIndex<mdHistory.length-1) { mdHistoryIndex++; m
 window.presence = window.presence??{};
 window.lastSeen = window.lastSeen??{};
 window.myStatus = window.myStatus??'online';
+window.myShareTyping = window.myShareTyping??true;
 window.typingUsers = window.typingUsers??{};
 window.activeCalls = window.activeCalls??{};
 let lastActivity = Date.now();
@@ -202,6 +203,7 @@ async function setMyStatus(status, auto=false) {
 }
 window.setMyStatus = setMyStatus;
 function setPrivacyShare(field, value) {
+  if (field==='share_typing') window.myShareTyping = value;
   let f = new FormData();
   f.append(field, value?'1':'0');
   backendfetch('/api/v1/me/status', {method: 'PATCH', body: f});
@@ -219,6 +221,7 @@ window.setPrivacyShare = setPrivacyShare;
 let lastTypingSent = 0;
 messageInput.addEventListener('input', ()=>{
   if (!window.currentChannel||![1,2].includes(window.currentChannelType)) return;
+  if (!window.myShareTyping||window.myStatus==='invisible') return;
   let now = Date.now();
   if (now-lastTypingSent<3500) return;
   lastTypingSent = now;
@@ -4162,6 +4165,7 @@ window.showuserdata = (me)=>{
     window.myId = me.id;
     if (me.presence==='idle'&&me.status_auto) setMyStatus('online');
     else if (me.presence) window.myStatus = me.presence;
+    if ('share_typing' in me) window.myShareTyping = me.share_typing!==0;
     applyMyStatus();
     window.servers[window.servers.findIndex(srv=>srv.id===window.currentServer)].name = me.username;
     localStorage.setItem('servers', JSON.stringify(window.servers));
