@@ -1958,6 +1958,216 @@
           "window": 60
         }
       }
+    },
+    "/channel/{channel_id}/message/{message_id}/reactions": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ChannelId"
+        },
+        {
+          "name": "message_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Bot actions"
+        ],
+        "summary": "Add a reaction",
+        "description": "React to a message, e.g. a bot acknowledging a command with a checkmark emoji. A user (or bot) can add several distinct reactions to the same message; adding the exact same content twice is only rejected (409) in broadcast channels, since encrypted channels can't be deduped server-side (ciphertext differs per encryption even for the same plaintext). `content` is plaintext for broadcast channels; for type 1/2 encrypt it with the channel's current AES key like message content, and pass `key`/`iv`. `timestamp`/`signature` work like sending a message, but the signed string is `content:channelId:messageId:signed_timestamp` (includes messageId, unlike message signing) so a signature can't be replayed onto a different message.",
+        "security": [
+          {
+            "botToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "content",
+                  "timestamp",
+                  "signature"
+                ],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "key": {
+                    "type": "string",
+                    "description": "Current channel AES key id. Required for channel type 1/2."
+                  },
+                  "iv": {
+                    "type": "string",
+                    "description": "16-char AES IV. Required for channel type 1/2."
+                  },
+                  "timestamp": {
+                    "type": "integer",
+                    "description": "Epoch seconds, must be within the server's signature timestamp window."
+                  },
+                  "signature": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reaction added",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, reaction limit reached for this message, or message has reached the maximum number of distinct reactions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No add_reactions permission in this channel",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Channel or message not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already added this exact reaction (broadcast channels only)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/channel/{channel_id}/message/{message_id}/reactions/{reaction_id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ChannelId"
+        },
+        {
+          "name": "message_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "reaction_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "delete": {
+        "tags": [
+          "Bot actions"
+        ],
+        "summary": "Remove a reaction",
+        "description": "Removes a reaction by id. Callable by whoever added it, or by anyone with manage_messages permission in the channel.",
+        "security": [
+          {
+            "botToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reaction removed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not your reaction and no manage_messages permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Channel, message, or reaction not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2284,6 +2494,13 @@
             "items": {
               "$ref": "#/components/schemas/Attachment"
             }
+          },
+          "reactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Reaction"
+            },
+            "description": "Embedded in every message from GET .../messages and in message_sent/message_edited SSE events."
           }
         }
       },
@@ -2554,6 +2771,61 @@
           },
           "success": {
             "type": "boolean"
+          }
+        }
+      },
+      "Reaction": {
+        "type": "object",
+        "description": "A reaction on a message.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string",
+            "description": "The emoji. Base64 ciphertext in encrypted channels (type 1/2), plaintext in broadcast (type 3), same split as message content."
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Channel key id used to encrypt this reaction's content. Null in broadcast channels."
+          },
+          "iv": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "16-char hex IV. Null in broadcast channels."
+          },
+          "signature": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Base64 RSA-PSS signature of content:channelId:messageId:signed_timestamp."
+          },
+          "signed_timestamp": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "integer",
+            "description": "Epoch milliseconds."
+          },
+          "user": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MessageUser"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the reactor is hidden (broadcast channels for non-privileged readers), same rule as message authors."
           }
         }
       }

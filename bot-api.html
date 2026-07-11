@@ -195,6 +195,7 @@ footer a{color:var(--muted)}
       <a href="#actions">Actions</a>
       <a href="#slashcommands">Slash commands</a>
       <a href="#components">Components</a>
+      <a href="#reactions">Reactions</a>
       <a href="#embeds">Embeds</a>
       <a href="#diagrams">Diagrams</a>
       <a href="#interactive">Interactive content</a>
@@ -1166,6 +1167,108 @@ data: {
   <span class="c-comment">// sub.components["reason"] has the user's input</span>
   processReason(sub.interaction_id, sub.components);
 });</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="reactions">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="sec-eyebrow">Bot actions</p>
+      <h2>Reactions</h2>
+      <p>A bot can react to a message — acknowledging a command with a checkmark, voting, or just being expressive. Multiple distinct reactions per user per message are allowed (Discord-style); the same emoji added twice by the same bot is only rejected server-side in broadcast channels. A single message caps out at 20 distinct reactions (broadcast channels count unique emoji; encrypted channels count total reaction rows, since true uniqueness isn't checkable server-side there), and a single user can add at most 20 reactions to one message. Reactions come back embedded in every message from <code>GET .../messages</code> and in <code>message_sent</code>/<code>message_edited</code> SSE events, grouped however you like client-side.</p>
+    </div>
+    <div class="lead">
+      <p>Content follows the exact same E2EE split as message content: plaintext in broadcast channels (type 3), and client-side AES-GCM-encrypted with the channel's current key for DM/group channels (type 1/2) — the same key from <a href="#actions">GET .../key</a> used for messages. <code>timestamp</code>/<code>signature</code> also mirror message signing, with one difference: the signed string is <code>content:channelId:messageId:signed_timestamp</code>, including the message id, so a signature can't be replayed onto a different message.</p>
+    </div>
+
+    <article class="endpoint" id="add-reaction">
+      <div class="ep-head">
+        <span class="method m-post">post</span>
+        <span class="ep-path">/channel/{channel_id}/message/{message_id}/reactions</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Adds a reaction. Requires the <code>add_reactions</code> permission in the channel — note this is a separate bit from <code>send_messages</code>, so a bot (or user) can be allowed to react in a read-only broadcast channel without being able to post there.</p>
+        <table class="fields">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="name">content</td><td class="type">string</td><td><span class="req">required</span></td><td>The emoji. Plaintext for broadcast channels; AES-GCM ciphertext (base64) for type 1/2.</td></tr>
+            <tr><td class="name">key</td><td class="type">string</td><td><span class="opt">optional</span></td><td>Current channel AES key id. Required for channel type 1/2.</td></tr>
+            <tr><td class="name">iv</td><td class="type">string</td><td><span class="opt">optional</span></td><td>16-char AES IV. Required for channel type 1/2.</td></tr>
+            <tr><td class="name">timestamp</td><td class="type">int</td><td><span class="req">required</span></td><td>Epoch seconds, must be within the server's signature timestamp window.</td></tr>
+            <tr><td class="name">signature</td><td class="type">string</td><td><span class="req">required</span></td><td>Base64 RSA-PSS signature of <code>content:channelId:messageId:signed_timestamp</code>.</td></tr>
+          </tbody>
+        </table>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Request (broadcast channel)</p>
+            <pre>POST /api/v1/channel/{channel_id}/message/{message_id}/reactions
+<span class="c-key">{</span>
+  <span class="c-key">"content"</span>: <span class="c-str">"👍"</span>,
+  <span class="c-key">"timestamp"</span>: 1718900123,
+  <span class="c-key">"signature"</span>: <span class="c-str">"base64..."</span>
+<span class="c-key">}</span></pre>
+          </div>
+          <div>
+            <p class="label">Response</p>
+            <pre>{
+  <span class="c-key">"id"</span>: <span class="c-str">"V1StGXR8_Z5jdHi6B-myT"</span>,
+  <span class="c-key">"success"</span>: true
+}</pre>
+          </div>
+        </div>
+        <div class="callout">
+          <p>A repeated identical <code>content</code> from the same bot on the same message returns <code>409</code> in broadcast channels only — encrypted channels can't be deduped server-side since ciphertext differs per encryption even for the same plaintext, so track your own bot's reactions client-side there if you want to avoid duplicates.</p>
+        </div>
+      </div>
+    </article>
+
+    <article class="endpoint" id="remove-reaction">
+      <div class="ep-head">
+        <span class="method m-delete">delete</span>
+        <span class="ep-path">/channel/{channel_id}/message/{message_id}/reactions/{reaction_id}</span>
+      </div>
+      <div class="ep-body">
+        <p class="ep-purpose">Removes a reaction by id (the id returned when it was added, or read off the message's <code>reactions</code> array). Works for the bot's own reactions; removing someone else's reaction additionally requires <code>manage_messages</code>.</p>
+        <div class="ex-grid">
+          <div>
+            <p class="label">Response</p>
+            <pre>{ <span class="c-key">"success"</span>: true }</pre>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <h2 style="font-size:1.4rem;margin-top:2.5rem">Receiving reaction events</h2>
+    <p>Other members' (and your own) reactions arrive over SSE as <code>reaction_add</code>/<code>reaction_remove</code>, so a bot can react to reactions without polling. In broadcast channels, <code>user</code> is null for recipients without <code>send_messages</code>/<code>manage_members</code>/<code>manage_permissions</code>, matching message author visibility.</p>
+    <div class="ex-grid">
+      <div>
+        <p class="label">reaction_add SSE frame</p>
+        <pre>event: reaction_add
+data: {
+  <span class="c-key">"channel_id"</span>: <span class="c-str">"..."</span>,
+  <span class="c-key">"message_id"</span>: <span class="c-str">"..."</span>,
+  <span class="c-key">"reaction"</span>: {
+    <span class="c-key">"id"</span>: <span class="c-str">"..."</span>,
+    <span class="c-key">"content"</span>: <span class="c-str">"👍"</span>,
+    <span class="c-key">"key"</span>: null,
+    <span class="c-key">"iv"</span>: null,
+    <span class="c-key">"signature"</span>: <span class="c-str">"base64..."</span>,
+    <span class="c-key">"signed_timestamp"</span>: 1718900123,
+    <span class="c-key">"created_at"</span>: 1718900123456,
+    <span class="c-key">"user"</span>: { <span class="c-key">"username"</span>: <span class="c-str">"alice"</span>, <span class="c-key">"display"</span>: <span class="c-str">"Alice"</span>, <span class="c-key">"pfp"</span>: null }
+  }
+}</pre>
+      </div>
+      <div>
+        <p class="label">reaction_remove SSE frame</p>
+        <pre>event: reaction_remove
+data: {
+  <span class="c-key">"channel_id"</span>: <span class="c-str">"..."</span>,
+  <span class="c-key">"message_id"</span>: <span class="c-str">"..."</span>,
+  <span class="c-key">"reaction_id"</span>: <span class="c-str">"..."</span>
+}</pre>
       </div>
     </div>
   </div>
